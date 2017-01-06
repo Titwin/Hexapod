@@ -1,7 +1,7 @@
 # Hexapod
-My Hexapod source code used for the french robotic cup
+My Hexapod source code.
 
-This is a dirty code, just try to understand principles
+It will be used for the french robotic cup, and cool stuff.
 
 
 
