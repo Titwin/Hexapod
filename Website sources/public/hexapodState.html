@@ -1,0 +1,42 @@
+<html>
+	<head>
+		<link rel="stylesheet" href="./css/style.css" >
+		<script src="./js/socket.io.js"></script>
+		<script src="./js/p5.min.js" type="text/javascript"></script>
+		<script src="./js/stateViewer2.js"></script>
+		<title>Hexapod status page</title>
+	</head>
+	
+	<body>
+		<header>
+			<div class="container">
+				<p><img src="./picture/IronCrabsSmall.png" alt="Logo" id="smallLogo"/></p>
+				<p><a class="hiddenlink" href="./"><h1>Hexapod Server</h1></a></p>
+			</div>
+		</header>
+		
+		<div class="container">
+			<nav>
+				<ul class = "navlist">
+					<li><h3><a class="navlink" href="./mainPage.html">Main page</a></h3></li>
+					<li><h3><a class="navlink" href="./hexapodState.html">Status</a></h3></li>
+					<li><h3><a class="navlink" href="./hexapodControl.html">Control</a></h3></li>
+				</ul>
+			</nav>
+		
+			<section>
+				<h2>Hexapod state</h2>
+				<p> You can see all node status. A node is a sensor or actuator connected on the robot bus.<br />
+					<em>Actually you can see just motors.</em><br />
+					You can see in real time motor position, speed, temperature and torque.</p>
+					
+				<div id="stateViewerWindow"> </div>
+			</section>
+		</div>
+		
+		<footer>
+			<p>Designed by Thibault LAINE</p>
+			<a href="https://ironcrabs.wordpress.com/">Site web de l'equipe</a></p>
+		</footer>
+	</body>
+</html>

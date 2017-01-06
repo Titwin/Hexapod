@@ -1,0 +1,62 @@
+<html>
+	<head>
+		<link rel="stylesheet" href="./css/style.css" >
+		<script src="./js/socket.io.js"></script>
+		<title>Hexapod Main page</title>
+	</head>
+	
+	<body>
+		<header>
+			<div class="container">
+				<p><img src="./picture/IronCrabsSmall.png" alt="Logo" id="smallLogo"/></p>
+				<p><a class="hiddenlink" href="./"><h1>Hexapod Server</h1></a></p>
+			</div>
+		</header>
+		
+		<div class="container">
+			<nav>
+				<ul class = "navlist">
+					<li><h3><a class="navlink" href="./mainPage.html">Main page</a></h3></li>
+					<li><h3><a class="navlink" href="./hexapodState.html">Status</a></h3></li>
+					<li><h3><a class="navlink" href="./hexapodControl.html">Control</a></h3></li>
+				</ul>
+			</nav>
+		
+			<section>
+				<p><img src="./picture/IronCrabs.png" alt="Logo" id="mainLogo"/></p>
+				<h2>Main menu</h2>
+				<h3>Hello Friend !</h3>
+				<p>This is the main page for controling the <strong>awesome</strong> Hexapod you are connect to.</p>
+				<p>Your option are :</p>
+				<ul>
+					<li>see robot state</li>
+					<li>remote control</li>
+				</ul>
+				
+				<div class="optionDescription">
+					<p>	The first page allow you to see the actual Hexapod state.<br />
+						You can see all node status. A node is a sensor or actuator connected on the robot bus.<br />
+						<em>Actually you can see just motors.</em><br />
+						You can see in real time motor position, speed, temperature and torque.</p>	
+					<p class="glossyButton">
+						<a class="hiddenlink" href="./hexapodState.html">Status</a>
+					</p>
+				</div>
+				
+				<div class="optionDescription">
+					<p>	The second page permit you to remotely control the Hexapod.<br />
+						Use the arrow on the screen to move the robot.<br />
+						You can see the feedback on the camera flow</p>
+					<p  class="glossyButton">
+						<a class="hiddenlink" href="./hexapodState.html">Control</a>
+					</p>
+				</div>
+			</section>
+		</div>
+		
+		<footer>
+			<p>Designed by Thibault LAINE</p>
+			<a href="https://ironcrabs.wordpress.com/">Site web de l'equipe</a></p>
+		</footer>
+	</body>
+</html>

@@ -1,0 +1,42 @@
+{
+	"nodeDrawing" :
+	{
+		"border": 6,
+		"radius": 30,
+		"masterRadius": 60,
+		"moduleBoxRatio": 0.683
+	},
+	
+	"asideDrawing" :
+	{
+		"height": 1.0,
+		"ratio": 0.5,
+		"margin": 0.025
+	},
+	
+	"specialIds" : 
+	{
+		"Arduino": 256,
+		"RPI3": 257,
+		"ModuleFront": 258,
+		"ModuleBack": 259
+	},
+	
+	"folding" : 
+	[
+		{
+			"comment" : "unfolded",
+			"zeroRadius": 0,
+			"moduleRetract": 0,
+			"displacementFactor": 2.5,
+			"branchAngle": [-1.047, 0, 1.047, -2.094, 3.142, 2.094, -2.618, -0.524]
+		},
+		{
+			"comment" : "folded",
+			"zeroRadius": 60,
+			"moduleRetract": 150,
+			"displacementFactor": 2.1,
+			"branchAngle": [-0.393, 0, 0.393, -2.749, 3.142, 2.749, -2.945, -0.196]
+		}
+	]
+}

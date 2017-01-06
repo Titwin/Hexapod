@@ -1,0 +1,237 @@
+#mainLogo
+{
+	display: block;
+	margin: auto;
+    height: 352px;
+    width: 777px;
+}
+#smallLogo
+{
+	display: block;
+	margin-left: 20px;
+    height: 175px;
+    width: 200px;
+}
+
+/*     the different container used     */
+.container
+{
+    display: flex;
+}
+.optionDescription
+{
+    display: flex;
+}
+.optionDescription *
+{
+	flex: 4;
+}
+
+
+@font-face
+{
+    font-family: 'IronMan';
+    src: url('./IronMan.ttf');
+}
+
+/*     default parameters     */
+body
+{
+	overflow	: scroll;
+	padding		: 1;
+	margin		: 0;
+	
+	text-align: left;
+	text-decoration: none;
+	
+	font-style: normal;
+	font-weight: normal;
+    font-family: Verdana;
+	font-size: 1em;
+	
+	color: black;
+	background-color: white;
+}
+
+
+footer
+{
+	margin: 10px;
+	
+	border-style: solid;
+    border-width: 2px;
+	border-color: black;
+	border-radius: 20px;
+	
+	background-color: #c9c9c9;
+	background-image: url("../picture/low-contrast-linen.png");
+	
+	text-align: center;
+}
+nav
+{
+	border-style: solid;
+    border-width: 2px;
+	border-color: black;
+	border-radius: 20px;
+	
+	background-color: #c9c9c9;
+	background-image: url("../picture/low-contrast-linen.png");
+	
+	margin: 10px;
+	
+	width: 25%;
+	min-width: 200px;
+	max-width: 300px;
+	flex: 1;
+}
+section
+{
+	margin: 10px;
+	
+	width: 75%;
+	min-width: 777px;
+	flex: 4;
+}
+header
+{
+	margin: 10px;
+	
+	border-style: solid;
+    border-width: 2px;
+	border-color: black;
+	border-radius: 20px;
+	
+	background-color: #c9c9c9;
+	background-image: url("../picture/low-contrast-linen.png");
+}
+
+
+/*     lists parameters    */
+ul.navlist
+{
+	list-style-type: none;
+}
+
+
+
+/*      links parameters      */
+a
+{
+	text-decoration: underline;
+	color: blue;
+}
+a:hover, a:hover:visited
+{
+	text-decoration: none;
+	color: green;
+}
+a:visited
+{
+	color: purple;
+}
+a.hiddenlink, a.hiddenlink:hover, a.hiddenlink:hover:visited, a.hiddenlink:visited
+{
+	text-decoration: none;
+	color: black;
+}
+a.navlink, a.navlink:visited
+{
+	text-decoration: none;
+	color: black;
+}
+a.navlink:hover, a.navlink:hover:visited
+{
+	text-decoration: none;
+	color: red;
+}
+
+/*     glossy button     */
+.glossyButton
+{
+	display: block;
+	width: 200px;
+	height: 50px;
+	line-height: 50px; /*used to center text (as to be in one line)*/
+	flex: 1;
+	
+	background: #d67f7c;
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(31%,#d67f7c), color-stop(100%,#ebbebc));
+	background: -webkit-linear-gradient(top,  #d67f7c 31%,#ebbebc 100%);
+	background: -moz-linear-gradient(top,  #d67f7c 31%, #ebbebc 100%);
+	background: -o-linear-gradient(top,  #d67f7c 31%,#ebbebc 100%);
+	background: -ms-linear-gradient(top,  #d67f7c 31%,#ebbebc 100%);
+	background: linear-gradient(to bottom,  #d67f7c 31%,#ebbebc 100%);
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#d67f7c', endColorstr='#ebbebc',GradientType=0 );
+
+	-webkit-border-radius: 25px;
+	-moz-border-radius: 25px;
+	border-radius: 25px;
+	border: 1px solid #4864a9;
+	
+	font-weight: bold;
+	font-size: 1.2em;
+	text-decoration: none;
+	text-align: center;
+	text-shadow: 1px 1px 0px rgba(255,255,255,.5);
+	-webkit-box-shadow:  0px 1px 3px 0px rgba(0, 0, 0, .2);    
+	box-shadow:  0px 1px 3px 0px rgba(0, 0, 0, .2);
+}
+
+
+/*     parameters titles     */
+h1
+{
+	margin: auto;
+	text-align: center;
+	font-weight: bold;
+    font-family: IronMan;
+	font-size: 8em;
+	flex: 1;
+}
+h2
+{
+	text-align: center;
+	font-size: 2em;
+}
+h3
+{
+	font-size: 1.2em;
+}
+
+
+/*     special word     */
+em
+{
+	font-style: italic;
+	color: silver;
+}
+strong
+{
+	font-weight: bold;
+}
+
+
+
+/*     special window     */
+#stateViewerWindow
+{
+	display: block;
+	text-align: center;
+	
+	min-width: 1200px;
+	min-height: 800px;
+	background-color: black;
+}
+
+
+
+
+
+
+
+
+
+
+
+
