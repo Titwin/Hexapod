@@ -30,6 +30,7 @@ class SerialProtocol
         void send(Message msg);
         int validMessageCount();
         Message getMessage();
+        bool tragetOnline() const;
         //
 
     private:
@@ -68,25 +69,46 @@ class SerialProtocol
         //
 
         //  target
-        #define RPI_TARGET_SHIFT  0
-        #define RPI_TARGET_MASK   (0x0F<<RPI_TARGET_SHIFT)
+        #define RPI_TARGET_SHIFT   0
+        #define RPI_TARGET_MASK    (0x0F<<RPI_TARGET_SHIFT)
 
         #define RPI_TARGET_CONTROL (1<<RPI_TARGET_SHIFT)
         #define RPI_TARGET_SCS15   (2<<RPI_TARGET_SHIFT)
         #define RPI_TARGET_ANALOG  (3<<RPI_TARGET_SHIFT)
+        #define RPI_TARGET_SLAVE   (4<<RPI_TARGET_SHIFT)
         //
 
-        //  register
-        #define RPI_ANALOG_ENABLE (1<<2)
-        #define RPI_SCS15_SCHEDULER_ENABLE (1<<3)
-
+        //  target 2 for SCS15
         #define RPI_POSITION 1
         #define RPI_TORQUE 2
         #define RPI_TEMPERATURE 3
         #define RPI_FAIL_NODE 4
+        //
 
+        //  target 2 for Arduino configuration
+        #define RPI_ANALOG_ENABLE (1<<2)
+        #define RPI_SCS15_SCHEDULER_ENABLE (1<<3)
         #define RPI_SERVO 1
         #define RPI_PWM 2
+        //
+
+        //  target 2 for Arduino configuration
+        #define RPI_ANALOG_ENABLE (1<<2)
+        #define RPI_SCS15_SCHEDULER_ENABLE (1<<3)
+        #define RPI_SERVO 1
+        #define RPI_PWM 2
+        //
+
+        //  target 2 for slaves
+        #define S_ID                0
+        #define S_CONFIG            1
+        #define S_DISTANCE_1        2
+        #define S_DISTANCE_2        3
+        #define S_SPEED_ORIENTATION 4
+        #define S_ORIENTATION       5
+
+        #define INST_ACTION  0x05
+        #define INST_RESET   0x06
         //
 };
 

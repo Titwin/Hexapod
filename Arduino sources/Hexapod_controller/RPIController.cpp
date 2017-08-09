@@ -1,5 +1,6 @@
 #include "RPIController.h"
 #include "AnalogScanner.h"
+#include "Network.h"
 
 //  target
 #define RPI_TARGET_SHIFT  0
@@ -8,6 +9,7 @@
 #define RPI_TARGET_CONTROL (1<<RPI_TARGET_SHIFT)
 #define RPI_TARGET_SCS15   (2<<RPI_TARGET_SHIFT)
 #define RPI_TARGET_ANALOG  (3<<RPI_TARGET_SHIFT)
+#define RPI_TARGET_SLAVE   (4<<RPI_TARGET_SHIFT)
 //
 
 //  register
@@ -184,7 +186,6 @@ void RPIController::parseChar(uint8_t c)
 
 void RPIController::sendMsg(uint8_t code, uint8_t dataLength, uint8_t* data, uint8_t target2)
 {
-  if(rpiPort.availableForWrite() < dataLength+5) return;
   rpiPort.write(startByte);
   rpiPort.write(startByte);
   uint8_t crc = 0;
@@ -215,16 +216,20 @@ void RPIController::sendMsg(uint8_t code, uint8_t dataLength, uint8_t* data, uin
 
 
 extern uint8_t boardControl;
-extern uint8_t failMot[];
+extern uint8_t funnyControl;
+extern int distance1;
+extern int distance2;
+extern float sorient_x;
+extern float orient_x;
 
+extern uint8_t failMot[];
 extern int posMot[];
 extern int torqueMot[];
 extern int tempMot[];
 extern int goalPosMot[];
 
-extern uint16_t analogIn[];
-extern AnalogScanner ANALOG;
-
+extern int analogIn[];
+extern Network NET;
 
 
 void RPIController::processMsg()
@@ -259,6 +264,8 @@ void RPIController::processMsg()
         case RPI_TORQUE:
           if((msgCode & RPI_INST_MASK) == RPI_INST_READ)
             sendMsg(RPI_INST_READ | RPI_TARGET_SCS15, 2*MAX_MOTOR_ON_CHANNEL, (uint8_t*)torqueMot, RPI_TORQUE);
+          else if((msgCode & RPI_INST_MASK) == RPI_INST_WRITE)
+            NET.enableTorque(currentMsg[1]);
           break;
           
         case RPI_TEMPERATURE:
@@ -272,18 +279,29 @@ void RPIController::processMsg()
 
     case RPI_TARGET_ANALOG:
       if((msgCode & RPI_INST_MASK) == RPI_INST_READ)
-        sendMsg(RPI_INST_READ | RPI_TARGET_ANALOG, 2*MAX_ANALOG_INPUT, (uint8_t*)analogIn);
-      else if((msgCode & RPI_INST_MASK) == RPI_INST_WRITE)
+        sendMsg(RPI_INST_READ | RPI_TARGET_ANALOG, 2*ANALOG_COUNT, (uint8_t*)analogIn);
+      break;
+
+    case RPI_TARGET_SLAVE:
+      if((msgCode & RPI_INST_MASK) == RPI_INST_READ)
       {
-        for(uint8_t i=0; i<MAX_ANALOG_OUTPUT; i++)
+        switch(currentMsg[0])
         {
-          //  5 and 6 analog out not available due to interaction with millis. See arduino analogWrite ref for more info
-          if(FIRST_ANALOG_OUTPUT + i == 5) continue;
-          else if(FIRST_ANALOG_OUTPUT + i == 6) continue;
-          
-          analogWrite(FIRST_ANALOG_OUTPUT + i, currentMsg[i]);
+          case S_CONFIG:            sendMsg(RPI_INST_READ | RPI_TARGET_SLAVE, 1, &funnyControl, S_CONFIG);                    break;
+          case S_DISTANCE_1:        sendMsg(RPI_INST_READ | RPI_TARGET_SLAVE, 2, (uint8_t*)&distance1, S_DISTANCE_1);         break;
+          case S_DISTANCE_2:        sendMsg(RPI_INST_READ | RPI_TARGET_SLAVE, 2, (uint8_t*)&distance2, S_DISTANCE_2);         break;
+          case S_SPEED_ORIENTATION: sendMsg(RPI_INST_READ | RPI_TARGET_SLAVE, 4, (uint8_t*)&sorient_x, S_SPEED_ORIENTATION);  break;
+          case S_ORIENTATION:       sendMsg(RPI_INST_READ | RPI_TARGET_SLAVE, 4, (uint8_t*)&orient_x, S_ORIENTATION);         break;
+          default: break;
         }
       }
+      else if((msgCode & RPI_INST_MASK) == RPI_INST_WRITE)// && (currentMsg[0] & INST_ACTION))
+      {
+        NET.action(0x01);
+        //sendAck();
+      }
+      else if((msgCode & RPI_INST_MASK) == RPI_INST_WRITE && (currentMsg[0] & INST_RESET))
+        NET.reset(0x02);
       break;
       
     default: break;

@@ -8,7 +8,6 @@ GamePad::GamePad()
     {
         fd = open ("/dev/input/js0", O_RDONLY|O_NONBLOCK);
         if(fd>=0) break;
-        usleep(16000);
     }
     if(fd<0) std::cout<<"error"<<std::endl;
     else std::cout<<"ok"<<std::endl;
@@ -22,25 +21,48 @@ GamePad::GamePad()
     }
     for(int i=0;i<6;i++)
         axisMap[i].value = 0;
-
     dbg = true;
 };
 
+bool GamePad::connected() { return fd >= 0; }
+
 void GamePad::update()
 {
-    //  erase some value for rising edge and falling edge detection
-    for(int i=0;i<12;i++)
+    if(fd < 0)
     {
-        buttonMap[i].pressed = false;
-        buttonMap[i].released = false;
+        fd = open ("/dev/input/js0", O_RDONLY|O_NONBLOCK);
+        if(fd >= 0) std::cout<<"Gamepad connection !"<<std::endl;
     }
+    else
+    {
+        //  erase some value for rising edge and falling edge detection
+        for(int i=0;i<12;i++)
+        {
+            buttonMap[i].pressed = false;
+            buttonMap[i].released = false;
+        }
 
-    //  polling all event in queue
-    JsEvent event;
-    while(read(fd, &event, sizeof(event)) > 0)
-        processEvent(event);
-    if (errno != EAGAIN)
-        std::cout<<"Reading event error"<<std::endl;
+        //  polling all event in queue
+        JsEvent event;
+        int errorCode;
+        while(true)
+        {
+            errorCode = read(fd, &event, sizeof(event));
+            if(errorCode <= 0) break;
+            else processEvent(event);
+        }
+        switch(errno)
+        {
+            case EAGAIN: break;
+            case ENODEV:
+                fd = -1;
+                if(fd >= 0) std::cout<<"Gamepad deconnection !"<<std::endl;
+                break;
+            default:
+                std::cout<<"unknown gamepad error : "<<errno<<std::endl;
+                break;
+        }
+    }
 }
 
 inline void GamePad::processEvent(JsEvent event)
@@ -64,6 +86,7 @@ inline void GamePad::processEvent(JsEvent event)
         default: break;
     }
 };
+
 void GamePad::debug()
 {
     if(!dbg) return;
@@ -91,3 +114,10 @@ void GamePad::debug()
     std::cout<<std::endl;
     dbg = false;
 };
+
+float GamePad::getExpAxis(const ButtonAxisMap& id)
+{
+    int16_t value = getAxis(id);
+    if(value >= 0) return std::exp( value/32768.f) - 1;
+    else return -std::exp( -value/32768.f) + 1;
+}

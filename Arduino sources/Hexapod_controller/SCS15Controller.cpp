@@ -38,6 +38,7 @@
 
   #define scs15Port Serial3
   #define enableRX()  {UCSR3B |= (1<<RXEN3);  UCSR3B &=~(1<<TXEN3);  DDRJ &= ~(1<<DDJ1); PORTJ |= (1<<PORTJ1);}
+  #define disableRX() {UCSR3B &=~(1<<RXEN3);  UCSR3B |= (1<<TXEN3);}
 
 #else
   #ifdef VERBOSE
@@ -53,7 +54,7 @@
 #define printf(args) (scs15Port.write(args))
 #define flush() (scs15Port.flush())
 #define scanf(buf,len) (scs15Port.readBytes(buf,len))
-#define printHeader(id,msgSize) {printf(startByte); printf(startByte); printf(id); printf(msgSize);}
+#define printHeader(id,msgSize) {printf(SCS15_startByte); printf(SCS15_startByte); printf(id); printf(msgSize);}
 
 
 
@@ -84,6 +85,22 @@ bool SCS15Controller::ping(uint8_t ID)
   if(ID != BROADCAST_ID) return (readBuf(6) == 6);
   return false;
 }
+
+bool SCS15Controller::reset(uint8_t ID)
+{
+  const uint8_t messageLength = 2;
+  
+  disableRX();
+  printHeader(ID,messageLength);
+  printf(INST_RESET);
+  printf((~(ID + messageLength + INST_RESET))&0xFF);
+  flush();
+  enableRX();
+
+  if(ID != BROADCAST_ID) return (readBuf(6) == 6);
+  return false;
+}
+
 
 void SCS15Controller::debug(uint8_t ID)
 {
@@ -220,31 +237,58 @@ int SCS15Controller::getRegister(uint8_t ID,uint8_t reg,uint8_t regSize)
   else return -2;
 }
 
-void SCS15Controller::syncSetRegister(uint8_t IDN, uint8_t* ID,uint8_t regStart, uint8_t singleMsgSize, uint8_t* allRegisterValue)
+void SCS15Controller::syncSetRegisterByte(uint8_t IDN, uint8_t* ID,uint8_t regStart, uint8_t* value)
 {
-  const uint8_t messageLength = (singleMsgSize+1)*IDN+4;
-  uint8_t crc = 0xfe + messageLength + INST_SYNC_WRITE + regStart + singleMsgSize;
+  const uint8_t messageLength = 2*IDN+4;
+  uint8_t crc = BROADCAST_ID + messageLength + INST_SYNC_WRITE + regStart + 1;
   
   disableRX();
   printHeader(BROADCAST_ID, messageLength);
   printf(INST_SYNC_WRITE);
   printf(regStart);
-  printf(singleMsgSize);
+  printf(1);
   
   for(uint8_t i=0; i<IDN; i++)
   {
-    printf(ID[i]);
-    crc += ID[i];
-    
-    for(uint8_t j=0; j<singleMsgSize; j++)
-    {
-      printf(allRegisterValue[i*singleMsgSize + j]);
-      crc += allRegisterValue[i*singleMsgSize + j];
-    }
+    printf(ID[i]);    crc += ID[i]; 
+    printf(value[i]); crc += value[i];
   }
   printf((~crc)&0xFF);
   flush();
   enableRX();
+}
+
+void SCS15Controller::syncSetRegisterWord(uint8_t IDN, uint8_t* ID,uint8_t regStart, int* value)
+{
+  const uint8_t messageLength = 3*IDN+4;
+  uint8_t crc = BROADCAST_ID + messageLength + INST_SYNC_WRITE + regStart + 2;
+  
+  disableRX();
+  printHeader(BROADCAST_ID, messageLength);
+  printf(INST_SYNC_WRITE);
+  printf(regStart);
+  printf(2);
+
+  uint8_t dataL, dataH;
+  for(uint8_t i=0; i<IDN; i++)
+  {
+    host2SCS(&dataL, &dataH, value[i]);
+    
+    printf(ID[i]); crc += ID[i];
+    printf(dataL); crc += dataL;
+    printf(dataH); crc += dataH;
+  }
+  printf((~crc)&0xFF);
+  flush();
+  enableRX();
+}
+
+int SCS15Controller::setPermanentID(uint8_t ID, uint8_t newID)
+{
+  if(lockEeprom(ID, false)  != 6 && ID != BROADCAST_ID) return 1;
+  if(setTemporaryID(ID, newID)  != 6 && ID != BROADCAST_ID) return 2;
+  if(lockEeprom(ID, true)  != 6 && ID != BROADCAST_ID) return 3;
+  return 0;
 }
 //
 

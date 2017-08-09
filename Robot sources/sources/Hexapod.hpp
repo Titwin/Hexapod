@@ -44,21 +44,32 @@ class Hexapod
 
 
         //  Public functions
+        void setTorque(bool b);
+        bool getTorque(){return torque;};
+
+        void setMotorAngles(uint8_t* data);
+        uint16_t* getGoalMotorAngles();
+
+        void animate(float elapseTime, MyVector3f translationSpeed, MyVector3f rotationSpeed);
+
+
+
+        float heading;
+
+
+
+
         void setState(RobotState s);
         RobotState getState(){return (RobotState)robotState;};
-        void setGait(RobotGait g);
+        void setGait(RobotGait g, bool log = false);
         void toogleTorque();
-        bool getTorque(){return torque;};
+
         bool legsInPosition();
         bool obstructed(int sharpIndex){return frontDistance[sharpIndex]<20;};
 
         int debug(){return legTrajectory[0].size();};
 
         bool isWellInitialized(){return wellInitialized;};
-        void animate(float elapseTime, MyVector3f translationSpeed, MyVector3f rotationSpeed);
-        void attack(int legIndex);
-        void setPushPosition(bool enable);
-        void openUmbrella();
         //
 
     private:
@@ -69,13 +80,9 @@ class Hexapod
         void animateAutonomousLegs(float elapseTime);
 
         MyVector3f getLegDisplacement(int legIndex,const MyVector3f& translationSpeed,const MyVector3f& rotationSpeed);
-        void updateLegPositionFromMotorsAngles();
-        void updateMotorsAnglesFromLegPosition();
-        bool tryConnectingToArduino();
 
         float getLegLimitFromDirection(int legIndex,MyVector3f direction);
         MyVector3f getAirTarget(int legIndex,MyVector3f takeoffPos,float t);
-        void correctPositionError(int legIndex);
         void initiateLegDomainCenter(float radius,float angle,float zeroHeight);
 
         inline void constructTransitionTrajectory();
@@ -91,8 +98,8 @@ class Hexapod
             bool wellInitialized;
             ForwardKinematics* forwardKModule;
             InverseKinematics* inverseKModule;
-            SerialProtocol* arduino;
             bool torque;
+            float lastMoveTime;
 
         //  limit speed and walk parameter
             float maxTranslationSpeedMagnitude;
@@ -104,11 +111,9 @@ class Hexapod
         //  important 3D position for algorithm
             MyVector3f* legPosition;
             MyVector3f* legTarget;
-            MyVector3f* legSendPosition;
             MyVector3f* legDisplacement;
             MyVector3f* legDomainCenter;
             MyVector3f* takeoffdownPosition;
-            MyVector3f* legErrorIntegral;
 
         //  trajectory parameters
             std::deque<std::pair<MyVector3f,float> > legTrajectory[6];
@@ -127,12 +132,12 @@ class Hexapod
             int frontDistance[3];
 
         //  angles parameters
-            int16_t motorAnglesOffset[24];
-            int8_t sens[24];
+            int16_t motorAnglesOffset[6][4];
+            uint16_t goalMotorAngle[24];
+            int8_t sens[6][4];
 
-            LegAngleSet motorAnglesArray[6];
-            LegAngleSet targetAnglesArray[6];
-
+            LegAngleVector motorAnglesArray[6];
+            LegAngleVector targetAnglesArray[6];
         //
 };
 

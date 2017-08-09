@@ -33,7 +33,6 @@ void SerialProtocol::debug(const Message& m,int16_t sum)
     if(sum >= 0) std::cout<<sum<<std::endl;
     else std::cout<<"crc"<<std::endl;
 }
-
 void SerialProtocol::update(uint8_t maxtime)
 {
     clock_t start = clock();
@@ -127,10 +126,9 @@ void SerialProtocol::update(uint8_t maxtime)
         }
     }
 
-    if((uint64_t)clock()/1000 - timestamp > 3000)
+    if((uint64_t)clock()/1000 - timestamp > 1000)
         send(ping);
 }
-
 void SerialProtocol::send(SerialProtocol::Message msg)
 {
     uint8_t dummy = startByte;
@@ -152,12 +150,10 @@ void SerialProtocol::send(SerialProtocol::Message msg)
     //std::cout<<"msg send : ";
     //debug(msg,msgcrc);
 }
-
 int SerialProtocol::validMessageCount()
 {
     return validMsgList.size();
 }
-
 SerialProtocol::Message SerialProtocol::getMessage()
 {
     SerialProtocol::Message msg;
@@ -165,6 +161,10 @@ SerialProtocol::Message SerialProtocol::getMessage()
         msg = validMsgList.front();
     validMsgList.pop_front();
     return msg;
+}
+bool SerialProtocol::tragetOnline() const
+{
+    return ((uint64_t)clock()/1000 - timestamp)<2000;
 }
 //
 

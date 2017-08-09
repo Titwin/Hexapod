@@ -2,9 +2,15 @@
 
 
 extern SCS15Controller SCS15;
+extern SlaveController SLAVE;
+
+extern uint8_t funnyControl;
+extern int distance1;
+extern int distance2;
+extern float sorient_x;
+extern float orient_x;
 
 extern uint8_t failMot[];
-
 extern int posMot[];
 extern int torqueMot[];
 extern int tempMot[];
@@ -20,6 +26,9 @@ Network::Network()
 
   // relative to contact fail
   respondingIDN = 0;
+
+  // relative to torque
+  torque = false;
 
   // relative to discovery scan
   discoveryIndex = 0;
@@ -38,20 +47,24 @@ Network::Network()
 
 void Network::setup()
 {
-  setDefaultParameters(0xFE);
-  respondingIDN = 0;
+  //  Fault latch (used to store actual torque value (enable or disable)
+  pinMode(FAULT_LATCH_OUT, INPUT);
+  pinMode(FAULT_LATCH_SET,OUTPUT);    digitalWrite(FAULT_LATCH_SET, HIGH);
+  pinMode(FAULT_LATCH_RST,OUTPUT);    digitalWrite(FAULT_LATCH_RST, HIGH);
+  digitalWrite(FAULT_LATCH_RST, LOW); digitalWrite(FAULT_LATCH_RST, HIGH);
+
+  setDefaultParameters(BROADCAST_ID);
+  enableTorque(false);
+  
   for(uint8_t i=0; i<MAX_MOTOR_ON_CHANNEL; i++)
   {
     int pos = SCS15.getPosition(i);
+    goalPosMot[i] = 512;
+    
     if(pos >= 0)
     {
       posMot[i] = pos;
-      goalPosMot[i] = pos;
       failMot[i] = 0;
-
-      idsSend[respondingIDN] = i;
-      posSend[respondingIDN] = goalPosMot[i];
-      respondingIDN++;
     }
     else
     {
@@ -65,23 +78,65 @@ void Network::loadFromEeprom()
 {
   int address = 1;
   for(uint8_t i=0; i<MAX_MOTOR_ON_CHANNEL; i++,address++)
+  {
     failMot[i] = EEPROM.read(address);
+  }
+  
+  setDefaultParameters(BROADCAST_ID);
+  pinMode(FAULT_LATCH_OUT, INPUT);
+  enableTorque(!digitalRead(FAULT_LATCH_OUT));
+
+  pinMode(FAULT_LATCH_SET,OUTPUT);    digitalWrite(FAULT_LATCH_SET, HIGH);
+  pinMode(FAULT_LATCH_RST,OUTPUT);    digitalWrite(FAULT_LATCH_RST, HIGH);
+  digitalWrite(FAULT_LATCH_RST, LOW); digitalWrite(FAULT_LATCH_RST, HIGH);
 }
+
+bool Network::enable()
+{
+  pinMode(NET_LATCH_OUT, INPUT);
+  bool watchdogReset = !digitalRead(NET_LATCH_OUT);
+  pinMode(EN_Network,OUTPUT);
+  digitalWrite(EN_Network, LOW);
+  digitalWrite(EN_Network, HIGH);
+
+  if(digitalRead(NET_LATCH_OUT))
+  {
+    pinMode(NET_LATCH_OUT,OUTPUT);
+    digitalWrite(NET_LATCH_OUT, LOW);    
+  }
+  
+  return watchdogReset;
+}
+
 
 void Network::setLoopTime(unsigned long time)
 {
   loopTime = time;
 }
 
-void Network::setDefaultParameters(uint8_t id, bool enableTorque)
+void Network::setDefaultParameters(uint8_t id)
 {
-  SCS15.setLimitTroque(id, 128);
+  SCS15.setLimitTroque(id, 1023);
   SCS15.setSpeed(id, loopTime);
-  SCS15.enableTorque(id, enableTorque);
 }
 
 int Network::fixedFunction(int retry)
 {
+  // hack
+  setDefaultParameters(BROADCAST_ID);
+  
+  // slave handling
+  int dummy =  SLAVE.getRegister(0x01, S_CONFIG, 1);
+  if(dummy >= 0) funnyControl = dummy;
+  else funnyControl = 0x00;
+
+  distance1 = SLAVE.getRegister(0x01, S_DISTANCE_1, 2);
+  distance2 = SLAVE.getRegister(0x01, S_DISTANCE_2, 2);
+  sorient_x = SLAVE.getFloatRegister(0x02, S_SPEED_ORIENTATION);
+  orient_x =  SLAVE.getFloatRegister(0x02, S_ORIENTATION);
+  
+
+  // motor handling
   respondingIDN = 0;
   uint8_t maxNetworkFault = 4;
   for(int i=0; i<MAX_MOTOR_ON_CHANNEL && maxNetworkFault; i++)
@@ -89,7 +144,11 @@ int Network::fixedFunction(int retry)
     if(failMot[i] == 0 || (failMot[i] < STOP_TRY_CONTACT_MOTOR && retry))
     {
       int pos = SCS15.getPosition(i);
-      if(pos >= 0)
+      if(pos >= 1024)
+      {
+        // network problem !!!
+      }
+      else if(pos >= 0)
       {
         posMot[i] = pos;
         failMot[i] = 0;
@@ -109,10 +168,19 @@ int Network::fixedFunction(int retry)
         }
       }
     }
+
+    //  Send array of goal position
+    //  motor buffer <= 64 bytes so we stop incrementing sync write index up to 20 and send a full packet at maximum size (64 byte message)
+    if(respondingIDN == 20)
+    {
+      SCS15.syncSetPosition(idsSend, respondingIDN, posSend);
+      respondingIDN = 0;
+    } 
   }
 
-  //  Send array of goal position
-  SCS15.syncSetPosition(idsSend,respondingIDN,posSend);
+  //  Send array of goal position remaning
+  if(respondingIDN) SCS15.syncSetPosition(idsSend, respondingIDN, posSend); 
+  
   return retry;
 }
 
@@ -141,8 +209,14 @@ void Network::nodeScan()
           
           if(SCS15.ping(specialScanID))
           {
-            setDefaultParameters(specialScanID, false);
-            failMot[specialScanID] = 0;
+            setDefaultParameters(specialScanID);
+            SCS15.enableTorque(specialScanID, false);
+            if(specialScanID == 1 && failMot[0])
+            {
+              SCS15.setTemporaryID(specialScanID, 0);
+              failMot[0] = 0;
+            }
+            else failMot[specialScanID] = 0;
           }
         }
       }
@@ -151,6 +225,7 @@ void Network::nodeScan()
         if(SCS15.ping(discoveryIndex))
         {
           setDefaultParameters(discoveryIndex);
+          SCS15.enableTorque(discoveryIndex, torque);
           failMot[discoveryIndex] = 0;
         }
         discoveryIndex++;
@@ -198,4 +273,25 @@ void Network::taskScheduled()
   }
 }
 
+
+
+
+
+void Network::enableTorque(bool enable)
+{
+  torque = enable;
+  SCS15.enableTorque(BROADCAST_ID, torque);
+  if(!failMot[0]) SCS15.enableTorque(0x00, false);
+  if(!failMot[1]) SCS15.enableTorque(0x01, false);
+}
+
+void Network::action(uint8_t id)
+{
+  SLAVE.action(id);
+}
+
+void Network::reset(uint8_t id)
+{
+  SLAVE.reset(id);
+}
 

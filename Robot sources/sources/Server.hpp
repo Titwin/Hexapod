@@ -6,7 +6,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <errno.h>
 #include <signal.h>
 
@@ -23,6 +25,10 @@ class Server
         struct per_session_data {
             int fd;
         };
+        enum DataType {
+            BYTE = 1,   // important for pushMessage loop to begin at 1
+            WORD = 2
+        };
         typedef std::pair<std::string,std::string> Message;
         //
 
@@ -34,6 +40,7 @@ class Server
         //  Public functions
         void update();
         int getClientCount();
+        void pushMessage(std::string title, uint8_t* data, unsigned int dataSize, uint8_t datatype = WORD);
         void pushMessage(std::string title, std::string data);
 
         static int clientCounter;

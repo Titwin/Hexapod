@@ -1,5 +1,7 @@
-#include "Arduino.h"
 #include "Configuration.h"
+
+#include "Arduino.h"
+
 
 class RPIController
 {

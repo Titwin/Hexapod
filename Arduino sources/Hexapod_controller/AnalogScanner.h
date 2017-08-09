@@ -1,5 +1,7 @@
-#include "Arduino.h"
 #include "Configuration.h"
+
+#include "Arduino.h"
+
 
 class AnalogScanner
 {
@@ -11,8 +13,6 @@ class AnalogScanner
     //
 
     //  Public functions
-    void start();
-    void stop();
     void update(unsigned long stoptime);
     //
 
@@ -20,8 +20,6 @@ class AnalogScanner
     //  Attributes
     uint8_t scanIndex;
     //
-
-    #define LOWPASS_FILTER 1
 };
 
 

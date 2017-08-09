@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <cmath>
 
 #include <map>
 
@@ -45,12 +46,14 @@ class GamePad
         //  Public functions
         void update();
         void debug();
+        bool connected();
 
         bool isPressed(const ButtonAxisMap& id) {return buttonMap[id].value;};
         bool instantPressed(const ButtonAxisMap& id) {return buttonMap[id].pressed;};
         bool instantReleased(const ButtonAxisMap& id) {return buttonMap[id].released;};
 
         int16_t getAxis(const ButtonAxisMap& id) {return axisMap[id%6].value;};
+        float getExpAxis(const ButtonAxisMap& id);
         //
 
     private:

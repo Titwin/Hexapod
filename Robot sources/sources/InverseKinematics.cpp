@@ -1,6 +1,6 @@
 #include "InverseKinematics.hpp"
 
-LegAngleSet InverseKinematics::defaultAngle = LegAngleSet(0,45,0,-90);
+LegAngleVector InverseKinematics::defaultAngle = LegAngleVector(0,45,0,-90);
 
 //Default
 InverseKinematics::InverseKinematics()
@@ -18,11 +18,11 @@ InverseKinematics::InverseKinematics()
 //
 
 //  Public functions
-LegAngleSet InverseKinematics::getAnglesFromExtremityAndIncidence(int legIndex,MyVector3f targetPosition,float incidence,LegAngleSet initialAngle)
+LegAngleVector InverseKinematics::getAnglesFromExtremityAndIncidence(int legIndex,MyVector3f targetPosition,float incidence,LegAngleVector initialAngle)
 {
     if(!fk) return initialAngle;
 
-    LegAngleSet finalAngle = initialAngle;
+    LegAngleVector finalAngle = initialAngle;
         finalAngle.angle3 = incidence;
 
     MyVector3f gradient;                            //  gradient vector
@@ -40,7 +40,7 @@ LegAngleSet InverseKinematics::getAnglesFromExtremityAndIncidence(int legIndex,M
     for(int i=0;i<maxIteration;i++)
     {
         //gradient for angle 1
-        gradient = fk->getLegExtremityPosition(legIndex,finalAngle + LegAngleSet(step,0,0,0)) - tmpLegPosition;
+        gradient = fk->getLegExtremityPosition(legIndex,finalAngle + LegAngleVector(step,0,0,0)) - tmpLegPosition;
         angleContrib1 = gain*(positionError*gradient);
         if(angleContrib1 >  angleIterationBound)
              a1 = finalAngle.angle1 + angleIterationBound ;
@@ -49,7 +49,7 @@ LegAngleSet InverseKinematics::getAnglesFromExtremityAndIncidence(int legIndex,M
         else a1 = finalAngle.angle1 + angleContrib1;
 
         //gradient for angle 2
-        gradient = fk->getLegExtremityPosition(legIndex,finalAngle + LegAngleSet(0,step,0,0)) - tmpLegPosition;
+        gradient = fk->getLegExtremityPosition(legIndex,finalAngle + LegAngleVector(0,step,0,0)) - tmpLegPosition;
         angleContrib2 = gain*(positionError*gradient);
         if(angleContrib2 >  angleIterationBound)
              a2 = finalAngle.angle2 + angleIterationBound ;
@@ -58,7 +58,7 @@ LegAngleSet InverseKinematics::getAnglesFromExtremityAndIncidence(int legIndex,M
         else a2 = finalAngle.angle2 + angleContrib2;
 
         //gradient for angle 4
-        gradient = fk->getLegExtremityPosition(legIndex,finalAngle + LegAngleSet(0,0,0,step)) - tmpLegPosition;
+        gradient = fk->getLegExtremityPosition(legIndex,finalAngle + LegAngleVector(0,0,0,step)) - tmpLegPosition;
         angleContrib4 = gain*(positionError*gradient);
         if(angleContrib4 >  angleIterationBound)
              a4 = finalAngle.angle4 + angleIterationBound ;
@@ -85,12 +85,12 @@ LegAngleSet InverseKinematics::getAnglesFromExtremityAndIncidence(int legIndex,M
     }
     return finalAngle;
 }
-LegAngleSet InverseKinematics::getAnglesFromJointAndDirection(int legIndex,MyVector3f jointTargetPosition,MyVector3f legTargetDirection,LegAngleSet initialAngle)
+LegAngleVector InverseKinematics::getAnglesFromJointAndDirection(int legIndex,MyVector3f jointTargetPosition,MyVector3f legTargetDirection,LegAngleVector initialAngle)
 {
     if(!fk) return initialAngle;
     legTargetDirection.normalize();
 
-    LegAngleSet finalAngle = initialAngle;
+    LegAngleVector finalAngle = initialAngle;
     MyVector3f gradient;
     MyVector3f jointPositionError,directionError;
     MyVector3f tmpJointPosition,tmpDirection;
@@ -109,7 +109,7 @@ LegAngleSet InverseKinematics::getAnglesFromJointAndDirection(int legIndex,MyVec
     for(int i=0;i<maxIteration;i++)
     {
         //gradient for angle 1
-        gradient = fk->getLegInterJointPosition(legIndex,finalAngle + LegAngleSet(step,0,0,0)) - tmpJointPosition;
+        gradient = fk->getLegInterJointPosition(legIndex,finalAngle + LegAngleVector(step,0,0,0)) - tmpJointPosition;
         angleContrib1 = gain*(jointPositionError*gradient);
         if(angleContrib1 >  angleIterationBound)
              a1 = finalAngle.angle1 + angleIterationBound ;
@@ -118,7 +118,7 @@ LegAngleSet InverseKinematics::getAnglesFromJointAndDirection(int legIndex,MyVec
         else a1 = finalAngle.angle1 + angleContrib1;
 
         //gradient for angle 2
-        gradient = fk->getLegInterJointPosition(legIndex,finalAngle + LegAngleSet(0,step,0,0)) - tmpJointPosition;
+        gradient = fk->getLegInterJointPosition(legIndex,finalAngle + LegAngleVector(0,step,0,0)) - tmpJointPosition;
         angleContrib2 = gain*(jointPositionError*gradient);
         if(angleContrib2 >  angleIterationBound)
              a2 = finalAngle.angle2 + angleIterationBound ;
@@ -127,7 +127,7 @@ LegAngleSet InverseKinematics::getAnglesFromJointAndDirection(int legIndex,MyVec
         else a2 = finalAngle.angle2 + angleContrib2;
 
         //gradient for angle 3
-        gradient = fk->getLegPointingDirection(legIndex,finalAngle + LegAngleSet(0,0,step,0)) - tmpDirection;
+        gradient = fk->getLegPointingDirection(legIndex,finalAngle + LegAngleVector(0,0,step,0)) - tmpDirection;
         angleContrib3 = gain*(directionError*gradient);
         if(angleContrib3 >  angleIterationBound)
              a3 = finalAngle.angle3 + angleIterationBound ;
@@ -136,7 +136,7 @@ LegAngleSet InverseKinematics::getAnglesFromJointAndDirection(int legIndex,MyVec
         else a3 = finalAngle.angle3 + angleContrib3;
 
         //gradient for angle 4
-        gradient = fk->getLegPointingDirection(legIndex,finalAngle + LegAngleSet(0,0,0,step)) - tmpDirection;
+        gradient = fk->getLegPointingDirection(legIndex,finalAngle + LegAngleVector(0,0,0,step)) - tmpDirection;
         angleContrib4 = gain*(directionError*gradient);
         if(angleContrib4 >  angleIterationBound)
              a4 = finalAngle.angle4 + angleIterationBound ;

@@ -19,7 +19,6 @@ static int ws_service_callback(libwebsocket_context* context, libwebsocket *wsi,
             for(int i=0; i<len; i++)
                 std::cout << ((char*)in)[i];
             std::cout << std::endl;
-            //websocket_write_back(wsi ,(char *)in, -1);
             break;
 
         case LWS_CALLBACK_CLOSED:
@@ -131,6 +130,19 @@ int Server::getClientCount()
 {
     if(!context) return -1;
     else return clientCounter;
+}
+void Server::pushMessage(std::string title, uint8_t* data, unsigned int dataSize, uint8_t datatype)
+{
+    if(!context) return;
+    std::string msgData;
+    for(unsigned int i = 1; i<dataSize; i += datatype)
+    {
+        std::ostringstream oss;
+        if(datatype == 2) oss << (int)(data[i+1]*256 + data[i]);
+        else if(datatype == 1) oss << (int)data[i];
+        msgData += std::string(oss.str()) + ' ';
+    }
+    Server::messageList.push_back(Message(title, msgData));
 }
 void Server::pushMessage(std::string title, std::string data)
 {
