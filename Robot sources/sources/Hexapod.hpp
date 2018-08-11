@@ -7,15 +7,10 @@
 #include "ForwardKinematics.hpp"
 #include "InverseKinematics.hpp"
 
-#include "SerialProtocol.hpp"
-
-
-
-
 class Hexapod
 {
     public:
-        //  Special
+        ///  Special
         enum RobotGait {
             TRIPOD = 0,
             RIPPLE,
@@ -37,13 +32,13 @@ class Hexapod
         //
 
 
-        //  Default
+        ///  Default
         Hexapod(std::string s = "'unknown hexapod'");
         ~Hexapod();
         //
 
 
-        //  Public functions
+        ///  Public functions
         void setTorque(bool b);
         bool getTorque(){return torque;};
 
@@ -54,7 +49,7 @@ class Hexapod
 
 
 
-        float heading;
+        //float heading;
 
 
 
@@ -73,7 +68,7 @@ class Hexapod
         //
 
     private:
-        //  Private functions
+        ///  Private functions
         void animateWalk(float elapseTime, MyVector3f translationSpeed, MyVector3f rotationSpeed);
         void animateGotoStart(float elapseTime);
         void animateTransition(float elapseTime);
@@ -92,7 +87,7 @@ class Hexapod
 
 
 
-        //  Attributes
+        ///  Attributes
         //  robot attributes
             std::string name;
             bool wellInitialized;
@@ -119,7 +114,7 @@ class Hexapod
             std::deque<std::pair<MyVector3f,float> > legTrajectory[6];
             bool blockAnimFlag[6];
 
-            float dummy;
+            //float dummy;
 
         //  leg machine states attributes
             int8_t legsState[6],legsGroup[6];

@@ -20,7 +20,7 @@ Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
     takeoffdownPosition = new MyVector3f[6];
 
 
-    heading = 0;
+    //heading = 0;
 
 
 
@@ -199,15 +199,6 @@ void Hexapod::animateWalk(float elapseTime, MyVector3f translationSpeed, MyVecto
     }
     else lastMoveTime = 0.f;
 
-    //std::cout<<lastMoveTime<<std::endl;
-    /*if(robotGait == METACHRONAL_4 || robotGait == TETRAPOD)
-    {
-        dummy += elapseTime;
-        if(dummy >= 2000*M_PI) dummy -= 2000*M_PI;
-        translationSpeed = MyVector3f(cos(dummy/1000),sin(dummy/1000),0);
-    }
-    else dummy = 0;*/
-
     //  Prepare parameters for use
     if(elapseTime>16) elapseTime = 16;
 
@@ -240,8 +231,6 @@ void Hexapod::animateWalk(float elapseTime, MyVector3f translationSpeed, MyVecto
         translationSpeed *= 0.5f;
         rotationSpeed *= 0.5f;
     }*/
-
-    heading += rotationSpeed.x;
 
     bool swap = false;
     if(limitForSwap<0.1)

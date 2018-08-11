@@ -16,7 +16,7 @@ static int ws_service_callback(libwebsocket_context* context, libwebsocket *wsi,
 
         case LWS_CALLBACK_RECEIVE:
             std::cout << "[Server Service] Server received:" << std::endl;
-            for(int i=0; i<len; i++)
+            for(unsigned int i=0; i<len; i++)
                 std::cout << ((char*)in)[i];
             std::cout << std::endl;
             break;
@@ -71,7 +71,7 @@ static int ws_service_callback(libwebsocket_context* context, libwebsocket *wsi,
 Server::Server(int portNumber)
 {
     //* Server attribute declaration */
-    const char *interface = NULL;
+    //const char *interface = NULL;
     const char *cert_path = NULL;
     const char *key_path = NULL;
     context = NULL;
@@ -102,14 +102,7 @@ Server::Server(int portNumber)
     //* create libwebsocket context. */
     lws_set_log_level(0, NULL);
     context = libwebsocket_create_context(&info);
-    if (context == NULL)
-    {
-        std::cout << "Websocket context creation error." << std::endl;
-    }
-    else
-    {
-        std::cout << "Websocket context creation success." << std::endl;
-    }
+    std::cout << "Websocket context creation " << (context?"success.":"error.") << std::endl;
 }
 Server::~Server()
 {
