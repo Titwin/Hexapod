@@ -24,17 +24,17 @@ class TTLbusController
         int getTimeout() const;
         //
 
-    protected:
-        /// Protected functions
+        /// Useful functions
         float bytes2Float(const uint8_t& b0, const uint8_t& b1, const uint8_t& b2, const uint8_t& b3) const;
         int bytes2Int(const uint8_t& b0, const uint8_t& b1) const;
         void int2Bytes(uint8_t *low, uint8_t* high, int data) const;
+        //
 
+    protected:
+        /// Protected functions
         inline void send(const uint8_t& byte) const { write(tty_fd, &byte, 1); }
         int readBuf(const uint8_t& len, uint8_t *buffer = NULL) const;
-
         void enableTX(const bool& enable, unsigned int msgLength = 0);
-        //void flush(clock_t start, const uint8_t msgLength);
         //
 
         /// Attributes

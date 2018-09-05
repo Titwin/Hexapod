@@ -7,6 +7,7 @@
 
 
 //  Default
+const uint8_t Hexapod::motorIDs[24] = {2,3,4,5, 6,7,8,9, 10,11,12,13, 14,15,16,17, 18,19,20,21, 22,23,24,25};
 Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
 {
     forwardKModule = new ForwardKinematics();
@@ -18,11 +19,6 @@ Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
     legDisplacement = new MyVector3f[6];
     legDomainCenter = new MyVector3f[6];
     takeoffdownPosition = new MyVector3f[6];
-
-
-    //heading = 0;
-
-
 
     //{ Initialize angles offsets
         motorAnglesOffset[0][0] = -52;    sens[0][0] = -1;
@@ -43,11 +39,11 @@ Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
         motorAnglesOffset[3][0] = -12;    sens[3][0] = -1;
         motorAnglesOffset[3][1] = -17;    sens[3][1] =  1;
         motorAnglesOffset[3][2] =  40;    sens[3][2] = -1;
-        motorAnglesOffset[3][3] =  23;    sens[3][3] =  1;
+        motorAnglesOffset[3][3] =  80;    sens[3][3] =  1;
 
         motorAnglesOffset[4][0] = -14;    sens[4][0] = -1;
-        motorAnglesOffset[4][1] =  40;    sens[4][1] =  1;
-        motorAnglesOffset[4][2] =  4;     sens[4][2] = -1;
+        motorAnglesOffset[4][1] =  -10;    sens[4][1] =  1;
+        motorAnglesOffset[4][2] = -50;    sens[4][2] = -1;
         motorAnglesOffset[4][3] = -33;    sens[4][3] =  1;
 
         motorAnglesOffset[5][0] = -4;     sens[5][0] = -1;
@@ -134,6 +130,10 @@ void Hexapod::setMotorAngles(uint8_t* data)
     }
     //int leg = 2;
     //std::cout << motorAnglesArray[leg].angle1 << ' ' << motorAnglesArray[leg].angle2 << ' ' << motorAnglesArray[leg].angle3 << ' ' << motorAnglesArray[leg].angle4 << std::endl;
+}
+const uint8_t* Hexapod::getMotorsIds() const
+{
+    return motorIDs;
 }
 uint16_t* Hexapod::getGoalMotorAngles()
 {

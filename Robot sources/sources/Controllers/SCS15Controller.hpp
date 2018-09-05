@@ -4,31 +4,9 @@
 #include "TTLbusController.hpp"
 
 
-class SCS15Controller : private TTLbusController
+class SCS15Controller : public TTLbusController
 {
     public:
-        ///  default
-        SCS15Controller(int initialTimeout = 3);
-        //
-
-        /// Set/get functions
-        int setRegister(const uint8_t& ID, const uint8_t& reg, const uint8_t& regSize, const uint8_t* val);
-        int getRegister(const uint8_t& ID, const uint8_t& reg, const uint8_t& regSize);
-        void syncSetRegisterByte(const uint8_t& IDN, uint8_t* ID, const uint8_t& regStart, uint8_t* value);
-        void syncSetRegisterWord(const uint8_t& IDN, uint8_t* ID, const uint8_t& regStart, int* value);
-        //
-
-        /// Special function (specific)
-        bool ping(const uint8_t& ID);
-        bool reset(const uint8_t& ID);
-        bool debug(const uint8_t& ID);
-        //
-
-    protected:
-        /// Protected functions
-        inline void printHeader(const uint8_t& id, const uint8_t& msgSize) const;
-        //
-
         /// Attributes
         enum Miscellaneous
         {
@@ -89,24 +67,47 @@ class SCS15Controller : private TTLbusController
         };
         //
 
+        ///  default
+        SCS15Controller(int initialTimeout = 3);
+        //
+
+        /// Set/get functions
+        int setRegister(const uint8_t& ID, const uint8_t& reg, const uint8_t& regSize, const uint8_t* val);
+        int getRegister(const uint8_t& ID, const uint8_t& reg, const uint8_t& regSize);
+        void syncSetRegisterByte(const uint8_t& IDN, uint8_t* ID, const uint8_t& regStart, uint8_t* value);
+        void syncSetRegisterWord(const uint8_t& IDN, uint8_t* ID, const uint8_t& regStart, uint16_t* value);
+        //
+
+        /// Special function (specific)
+        int scan(uint8_t* idSize, uint8_t* idList);
+        bool ping(const uint8_t& ID);
+        bool reset(const uint8_t& ID);
+        bool debug(const uint8_t& ID, uint8_t* response = NULL);
+        //
+
+    protected:
+        /// Protected functions
+        inline void printHeader(const uint8_t& id, const uint8_t& msgSize) const;
+        //
+
     public:
         /// Special function (specific)
         inline int lockEeprom(const uint8_t& ID, const uint8_t& enable)    {return setRegister(ID, P_LOCK, 1, &enable);}
         inline int setTemporaryID(const uint8_t& ID, const uint8_t& newID) {return setRegister(ID, P_ID, 1, &newID);}
         int setPermanentID(const uint8_t& ID, const uint8_t& newID);
 
-        inline int enableTorque(const uint8_t& ID, const uint8_t& enable)  {return setRegister(ID, P_TORQUE_ENABLE, 1, &enable);}
-        inline int setLimitTroque(const uint8_t& ID, const int& maxTroque) {return setRegister(ID, P_MAX_TORQUE_L, 2, (uint8_t*)&maxTroque);}
-        inline int setSpeed(const uint8_t& ID, const int& speed)           {return setRegister(ID, P_GOAL_TIME_L, 2, (uint8_t*)&speed);}
-        inline int setPosition(const uint8_t& ID, const int& position)     {return setRegister(ID, P_GOAL_POSITION_L, 2, (uint8_t*)&position);}
+        //inline int enableTorque(const uint8_t& ID, const uint8_t& enable)       {return setRegister(ID, P_TORQUE_ENABLE, 1, &enable);}
+        //inline int setLimitTroque(const uint8_t& ID, const uint16_t& maxTroque) {return setRegister(ID, P_MAX_TORQUE_L, 2, (uint8_t*)&maxTroque);}
+        //inline int setSpeed(const uint8_t& ID, const uint16_t& speed)           {return setRegister(ID, P_GOAL_TIME_L, 2, (uint8_t*)&speed);}
+        //inline int setPosition(const uint8_t& ID, const uint16_t& position)     {return setRegister(ID, P_GOAL_POSITION_L, 2, (uint8_t*)&position);}
 
         inline int getEnableTorque(const uint8_t& ID){return getRegister(ID, P_TORQUE_ENABLE, 1);}
         inline int getTorque(const uint8_t& ID)      {return getRegister(ID, P_PRESENT_LOAD_L, 2);}
         inline int getTemperature(const uint8_t& ID) {return getRegister(ID, P_PRESENT_TEMPERATURE, 1);}
         inline int getPosition(const uint8_t& ID)    {return getRegister(ID, P_PRESENT_POSITION_L, 2);}
 
-        inline void syncSetPosition(uint8_t* ID, uint8_t IDN, int* pos) {syncSetRegisterWord(IDN, ID, P_GOAL_POSITION_L, pos);}
-        inline void syncSetTorque(uint8_t* ID, uint8_t IDN, uint8_t* torque) {syncSetRegisterByte(IDN, ID, P_TORQUE_ENABLE, torque);}
+        inline void syncSetPosition(uint8_t* ID, const uint8_t& IDN, uint16_t* pos) {syncSetRegisterWord(IDN, ID, P_GOAL_POSITION_L, pos);}
+        inline void syncSetTorque(uint8_t* ID, const uint8_t& IDN, uint8_t* torque) {syncSetRegisterByte(IDN, ID, P_TORQUE_ENABLE, torque);}
         //
 };
 

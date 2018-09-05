@@ -4,8 +4,8 @@
 #include <deque>
 
 
-#include "ForwardKinematics.hpp"
-#include "InverseKinematics.hpp"
+#include "Maths/ForwardKinematics.hpp"
+#include "Maths/InverseKinematics.hpp"
 
 class Hexapod
 {
@@ -43,16 +43,10 @@ class Hexapod
         bool getTorque(){return torque;};
 
         void setMotorAngles(uint8_t* data);
+        const uint8_t* getMotorsIds() const;
         uint16_t* getGoalMotorAngles();
 
         void animate(float elapseTime, MyVector3f translationSpeed, MyVector3f rotationSpeed);
-
-
-
-        //float heading;
-
-
-
 
         void setState(RobotState s);
         RobotState getState(){return (RobotState)robotState;};
@@ -86,7 +80,6 @@ class Hexapod
         //
 
 
-
         ///  Attributes
         //  robot attributes
             std::string name;
@@ -114,8 +107,6 @@ class Hexapod
             std::deque<std::pair<MyVector3f,float> > legTrajectory[6];
             bool blockAnimFlag[6];
 
-            //float dummy;
-
         //  leg machine states attributes
             int8_t legsState[6],legsGroup[6];
             float legsIncidence[6],legsIncidenceTarget[6];
@@ -129,6 +120,7 @@ class Hexapod
         //  angles parameters
             int16_t motorAnglesOffset[6][4];
             uint16_t goalMotorAngle[24];
+            static const uint8_t motorIDs[24];
             int8_t sens[6][4];
 
             LegAngleVector motorAnglesArray[6];

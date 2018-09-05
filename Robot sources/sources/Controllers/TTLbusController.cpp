@@ -37,7 +37,6 @@ int TTLbusController::readBuf(const uint8_t& len, uint8_t *buffer) const
 {
     uint8_t readBytes = 0;
     uint8_t data;
-    std::chrono::time_point<std::chrono::system_clock> start = std::chrono::high_resolution_clock::now();
 
     //  polling bytes
     while(readBytes < len && std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - startEnable).count() < timeout)
