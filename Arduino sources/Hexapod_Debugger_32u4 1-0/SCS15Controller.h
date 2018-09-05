@@ -1,7 +1,5 @@
 #include "Configuration.h"
-
 #include "Arduino.h"
-
 
 class SCS15Controller
 {
@@ -11,17 +9,15 @@ class SCS15Controller
     //
 
     //  Special
-    void initialize();
     bool ping(uint8_t ID);
     bool reset(uint8_t ID);
-    void debug(uint8_t ID);
+    bool debug(uint8_t ID);
     //
 
     //  set/get functions
     int setRegister(uint8_t ID,uint8_t reg,uint8_t regSize,uint8_t* val);
     int getRegister(uint8_t ID,uint8_t reg,uint8_t regSize);
-    void syncSetRegisterByte(uint8_t IDN, uint8_t* ID,uint8_t regStart, uint8_t* value);
-    void syncSetRegisterWord(uint8_t IDN, uint8_t* ID,uint8_t regStart, int* value);
+    void syncSetRegister(uint8_t IDN, uint8_t* ID,uint8_t regStart, uint8_t singleMsgSize, uint8_t* allRegisterValue);
     //
     
   protected:
@@ -30,8 +26,8 @@ class SCS15Controller
     int  readBuf(uint8_t len, uint8_t *buf = NULL);
 
   public:
-    //micelenious
-    #define SCS15_startByte 0xFF
+    //miscellaneous
+    #define SCS15_START 0xFF
     #define BROADCAST_ID 0xFE
 
     //register Address
@@ -93,14 +89,6 @@ class SCS15Controller
     #define P_CURRENT_H 70
 
     //Instruction:
-    #define INST_PING 0x01
-    #define INST_READ 0x02
-    #define INST_WRITE 0x03
-    #define INST_REG_WRITE 0x04
-    #define INST_ACTION 0x05
-    #define INST_RESET 0x06
-    #define INST_SYNC_WRITE 0x83
-
     inline int lockEeprom(uint8_t ID, uint8_t enable) {return setRegister(ID, P_LOCK, 1, &enable);}
     inline int setTemporaryID(uint8_t ID, uint8_t newID) {return setRegister(ID, P_ID, 1, &newID);}
     int setPermanentID(uint8_t ID, uint8_t newID);
@@ -115,8 +103,7 @@ class SCS15Controller
     inline int getTemperature(uint8_t ID) {return getRegister(ID, P_PRESENT_TEMPERATURE, 1);}
     inline int getPosition(uint8_t ID)    {return getRegister(ID, P_PRESENT_POSITION_L, 2);}
 
-    inline void syncSetPosition(uint8_t* ID, uint8_t IDN, int* pos) {syncSetRegisterWord(IDN, ID, P_GOAL_POSITION_L, pos);}
-    inline void syncSetTorque(uint8_t* ID, uint8_t IDN, uint8_t* torque) {syncSetRegisterByte(IDN, ID, P_TORQUE_ENABLE, torque);}
+    inline void syncSetPosition(uint8_t* ID, uint8_t IDN, int* pos) {syncSetRegister(IDN, ID, P_GOAL_POSITION_L, 2, (uint8_t*)pos);}
 };
 
 
