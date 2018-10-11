@@ -122,13 +122,13 @@ int Network::synchonize(const bool& verbose)
 }
 void Network::nodeScan(const bool& verbose)
 {
-    for(uint8_t i=0; i<NET_NODE_COUNT; i++,nodeDiscoveryID++)
+    for(uint8_t i=0; i<NET_NODE_COUNT; i++)
     {
         //  increment safely discoveryID
         if(nodeDiscoveryID >= NET_NODE_COUNT)
         {
-            nodeDiscoveryID = 0;
             nodeDiscoveryType++;
+            nodeDiscoveryID = 0;
             nodeDiscoveryType %= (int)TYPE_SIZE;
         }
 
@@ -138,13 +138,12 @@ void Network::nodeScan(const bool& verbose)
         {
             Node* n = tryMappingNode((NodeType)nodeDiscoveryType, nodeDiscoveryID, verbose);
             if(n)
-            {
                 nodeMap[(NodeType)nodeDiscoveryType][nodeDiscoveryID] = n;
-                nodeDiscoveryID++;
-                pthread_mutex_unlock(&mutex);
-                break;
-            }
+            pthread_mutex_unlock(&mutex);
+            nodeDiscoveryID++;
+            return;
         }
+        else nodeDiscoveryID++;
         pthread_mutex_unlock(&mutex);
     }
 }
