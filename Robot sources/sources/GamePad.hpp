@@ -15,6 +15,14 @@
 #define JS_EVENT_INIT   0x80    /* initial state of device */
 
 
+
+/*
+
+https://www.freebasic.net/forum/viewtopic.php?t=18068
+
+*/
+
+
 class GamePad
 {
     public:
