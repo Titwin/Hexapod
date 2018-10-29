@@ -1,15 +1,42 @@
 #include "GamePad.hpp"
 
-GamePad::GamePad()
+#include <sys/ioctl.h>
+#include <string.h>
+
+/* test_bit  : Courtesy of Johan Deneux */
+#define BITS_PER_LONG (sizeof(long) * 8)
+#define OFF(x)  ((x)%BITS_PER_LONG)
+#define BIT(x)  (1UL<<OFF(x))
+#define LONG(x) ((x)/BITS_PER_LONG)
+#define test_bit(bit, array)    ((array[LONG(bit)] >> OFF(bit)) & 1)
+
+GamePad::GamePad() : rumbleSupport(0), rumbleMagnitude(0), rumbleTarget(0)
 {
     //  Open Gamepad driver
     std::cout<<"connecting to gamepad dongle .. "<<std::flush;
     for(int i=0;i<600;i++)
     {
-        fd = open ("/dev/input/js0", O_RDONLY|O_NONBLOCK);
-        if(fd>=0) break;
+        fdjs = open ("/dev/input/js0", O_RDONLY|O_NONBLOCK);
+        fdevent = open ("/dev/input/event0", O_RDWR|O_NONBLOCK);
+        if(fdevent >= 0)
+        {
+            unsigned long features[4];
+            if(ioctl(fdevent, EVIOCGBIT(EV_FF, sizeof(unsigned long) * 4), features) == -1)
+            {
+                close(fdevent);
+                fdevent = -1;
+                rumbleSupport = -1; //loading of js but rumble not supported
+            }
+            else
+            {
+                if (test_bit(FF_RUMBLE, features))
+                    rumbleSupport = 1; // rumble supported
+            }
+        }
+        if(fdjs>=0 && rumbleSupport!=0) break;
     }
-    if(fd<0) std::cout<<"error"<<std::endl;
+
+    if(fdjs<0) std::cout<<"error"<<std::endl;
     else std::cout<<"ok"<<std::endl;
 
     //  Initialize event map & debug
@@ -22,16 +49,61 @@ GamePad::GamePad()
     for(int i=0;i<6;i++)
         axisMap[i].value = 0;
     dbg = true;
-};
 
-bool GamePad::connected() { return fd >= 0; }
+    effect.type = FF_RUMBLE;
+    effect.u.rumble.strong_magnitude = 0;
+    effect.u.rumble.weak_magnitude = 0;
+    effect.replay.length = 1000;
+    effect.replay.delay = 0;
+    effect.id = -1;
+
+    stop.type = EV_FF;
+    stop.code = effect.id;
+    stop.value = 0;
+
+    play.type = EV_FF;
+    play.code = effect.id;
+    play.value = 1;
+};
+GamePad::~GamePad()
+{
+    close(fdjs);
+    close(fdevent);
+}
+bool GamePad::connected() { return fdjs >= 0; }
 
 void GamePad::update()
 {
-    if(fd < 0)
+    if(fdjs < 0)
     {
-        fd = open ("/dev/input/js0", O_RDONLY|O_NONBLOCK);
-        if(fd >= 0) std::cout<<"Gamepad connection !"<<std::endl;
+        fdjs = open("/dev/input/js0", O_RDONLY|O_NONBLOCK);
+        if(fdjs >= 0)
+        {
+            std::cout<<"Gamepad connection !";
+            if(rumbleSupport>=0)
+            {
+                fdevent = open ("/dev/input/event0", O_RDONLY|O_NONBLOCK);
+                if(fdevent >= 0)
+                {
+                    unsigned long features[4];
+                    if(ioctl(fdevent, EVIOCGBIT(EV_FF, sizeof(unsigned long) * 4), features) == -1)
+                    {
+                        close(fdevent);
+                        fdevent = -1;
+                        rumbleSupport = -1; //loading of js but rumble not supported
+                    }
+                    else
+                    {
+                        if (test_bit(FF_RUMBLE, features))
+                        {
+                            rumbleSupport = 1;
+                        }
+                    }
+                }
+            }
+            if(rumbleSupport>0) std::cout<<"(with rumble)"<<std::endl;
+            else std::cout<<"(rumble not supported)"<<std::endl;
+        }
     }
     else
     {
@@ -47,7 +119,7 @@ void GamePad::update()
         int errorCode;
         while(true)
         {
-            errorCode = read(fd, &event, sizeof(event));
+            errorCode = read(fdjs, &event, sizeof(event));
             if(errorCode <= 0) break;
             else processEvent(event);
         }
@@ -55,12 +127,32 @@ void GamePad::update()
         {
             case EAGAIN: break;
             case ENODEV:
-                fd = -1;
-                if(fd >= 0) std::cout<<"Gamepad deconnection !"<<std::endl;
+                if(fdjs >= 0)
+                    std::cout<<"Gamepad deconnection !"<<std::endl;
+                fdjs = -1;
                 break;
             default:
                 std::cout<<"unknown gamepad error : "<<errno<<std::endl;
                 break;
+        }
+
+        //  rumble
+        if(rumbleSupport>0 && fdevent>=0 && rumbleTarget!=rumbleMagnitude)
+        {
+            stop.code = effect.id;
+            if (write(fdevent, (const void*) &stop, sizeof(stop)) == -1)
+                std::cout<<"error stopping effect"<<std::endl;
+
+            effect.u.rumble.strong_magnitude = rumbleTarget;
+            effect.u.rumble.weak_magnitude = rumbleTarget;
+            if (ioctl(fdevent, EVIOCSFF, &effect) == -1)
+                std::cout<<"failed to upload effect: "<<strerror(errno)<<std::endl;
+
+            play.code = effect.id;
+            if (write(fdevent, (const void*) &play, sizeof(play)) == -1)
+                std::cout<<"error playing effect"<<std::endl;
+
+            rumbleMagnitude = rumbleTarget;
         }
     }
 }
@@ -114,6 +206,13 @@ void GamePad::debug()
     std::cout<<std::endl;
     dbg = false;
 };
+
+
+void GamePad::rumble(uint16_t mag)
+{
+    rumbleTarget = mag;
+}
+
 
 float GamePad::getExpAxis(const ButtonAxisMap& id)
 {

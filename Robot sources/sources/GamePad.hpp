@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <cmath>
+#include <linux/input.h>
 
 #include <map>
 
@@ -49,12 +50,14 @@ class GamePad
 
         //  Default
         GamePad();
+        ~GamePad();
         //
 
         //  Public functions
         void update();
         void debug();
         bool connected();
+        void rumble(uint16_t mag = 65535);
 
         bool isPressed(const ButtonAxisMap& id) {return buttonMap[id].value;};
         bool instantPressed(const ButtonAxisMap& id) {return buttonMap[id].pressed;};
@@ -70,7 +73,12 @@ class GamePad
         //
 
         //  Attributes
-        int fd;
+        int fdjs, fdevent;
+        int rumbleSupport;
+        uint16_t rumbleMagnitude, rumbleTarget;
+        ff_effect effect;
+        input_event stop, play;
+
         std::map<uint8_t,ButtonEvent> buttonMap;    //  button event map (store button state)
         std::map<uint8_t,AxisEvent>   axisMap;      //  axis event map (store axis value)
         bool dbg;                                   //  boolean used in debug function to avoid useless print in console
