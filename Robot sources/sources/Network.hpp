@@ -66,6 +66,11 @@ class Network
             uint8_t temperature;
             uint8_t torque;
         };
+
+        enum Configuration
+        {
+            CONFIG_ACCURATE_DISTANCE = (1 << 0),
+        };
         //
 
         /// Default
@@ -88,6 +93,7 @@ class Network
 
         /// Attributes
         std::atomic_ullong TTLbusError;
+        std::atomic<uint8_t> configuration;
         //
 
     protected:

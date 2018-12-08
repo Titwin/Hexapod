@@ -72,7 +72,7 @@ class MyVector3
                 friend std::ostream& operator<<(std::ostream& os, const MyVector3& v)
                 {
                     os<<std::fixed<<std::setprecision(3);
-                    os<<"[  "<<v.x<<" "<<std::setw(10)<<v.y<<" "<<std::setw(10) << v.z << " ]\n";
+                    os<<"[  "<<v.x<<" "<<std::setw(10)<<v.y<<" "<<std::setw(10) << v.z << " ]";
                     os<<std::resetiosflags(std::ios_base::fixed | std::ios_base::floatfield);
                     return os;
                 };

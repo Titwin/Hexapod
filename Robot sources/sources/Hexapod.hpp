@@ -45,6 +45,7 @@ class Hexapod
         void setMotorAngles(uint8_t* data);
         const uint8_t* getMotorsIds() const;
         uint16_t* getGoalMotorAngles();
+        void getSensorsConfiguration(std::pair<MyVector3f, MyVector3f>* configuration) const;
 
         void animate(float elapseTime, MyVector3f translationSpeed, MyVector3f rotationSpeed);
 
@@ -109,7 +110,6 @@ class Hexapod
 
         //  leg machine states attributes
             int8_t legsState[6],legsGroup[6];
-            float legsIncidence[6],legsIncidenceTarget[6];
 
         //  robot machine state attributes
             int8_t robotState,robotGait,robotTargetGait,transitState;
@@ -118,10 +118,10 @@ class Hexapod
             int frontDistance[3];
 
         //  angles parameters
-            int16_t motorAnglesOffset[6][4];
-            uint16_t goalMotorAngle[24];
-            static const uint8_t motorIDs[24];
-            int8_t sens[6][4];
+            int16_t motorAnglesOffset[6][3];
+            uint16_t goalMotorAngle[18];
+            static const uint8_t motorIDs[18];
+            int8_t sens[6][3];
 
             LegAngleVector motorAnglesArray[6];
             LegAngleVector targetAnglesArray[6];

@@ -11,8 +11,7 @@ class InverseKinematics
         //
 
         //  Public functions
-        LegAngleVector getAnglesFromExtremityAndIncidence(int legIndex, MyVector3f targetPosition, float incidence = 0, LegAngleVector initialAngle = defaultAngle);
-        LegAngleVector getAnglesFromJointAndDirection(int legIndex, MyVector3f jointTargetPosition, MyVector3f legTargetDirection, LegAngleVector initialAngle = defaultAngle);
+        LegAngleVector getAnglesFromExtremity(int legIndex, MyVector3f targetPosition, LegAngleVector initialAngle = defaultAngle);
         //
 
         //  Setter / getter

@@ -5,20 +5,22 @@
 //Default
 ForwardKinematics::ForwardKinematics()
 {
-    legLength1 = MyVector3f(0, 12.6, 0);
-    legLength2 = MyVector3f(0, 22,   0);
+    legLength1 = MyVector3f(0, 4.4, 2);
+    legLength2 = MyVector3f(0, 5.4, 0);
+    legLength3 = MyVector3f(0, 9.9, 0);
+
+    sensorPosition = MyVector3f(0, 0.7,  2.8);
 
     anglesOffset[0] = 0;
-    anglesOffset[1] = 45;
-    anglesOffset[2] = 0;
-    anglesOffset[3] = -58;
+    anglesOffset[1] = 0;
+    anglesOffset[2] = -90;
 
-    legOrigin[0] = MyVector3f( 6.0, 6.0, 6.4);
-    legOrigin[1] = MyVector3f( 8.5, 0.0, 6.4);
-    legOrigin[2] = MyVector3f( 6.0,-6.0, 6.4);
-    legOrigin[3] = MyVector3f(-6.0, 6.0, 6.4);
-    legOrigin[4] = MyVector3f(-8.5, 0.0, 6.4);
-    legOrigin[5] = MyVector3f(-6.6,-6.0, 6.4);
+    legOrigin[0] = MyVector3f( 4.2,  4.7, 1.0);
+    legOrigin[1] = MyVector3f( 6.52, 0.0, 1.0);
+    legOrigin[2] = MyVector3f( 4.2, -4.7, 1.0);
+    legOrigin[3] = MyVector3f(-4.2,  4.7, 1.0);
+    legOrigin[4] = MyVector3f(-6.52, 0.0, 1.0);
+    legOrigin[5] = MyVector3f(-4.2, -4.7, 1.0);
 
     legOrientation[0] = MyMatrix3f::rotation( -45, MyVector3f(0,0,1));
     legOrientation[1] = MyMatrix3f::rotation( -90, MyVector3f(0,0,1));
@@ -30,51 +32,56 @@ ForwardKinematics::ForwardKinematics()
 //
 
 //  Public functions
-MyVector3f ForwardKinematics::getLegExtremityPosition(int legIndex,const float& angle1,const float& angle2,const float& angle3,const float& angle4)
+MyVector3f ForwardKinematics::getLegExtremityPosition(int legIndex,const float& angle1,const float& angle2,const float& angle3)
 {
-    MyMatrix3f R1, R2, R3, R4;
+    MyMatrix3f R1, R2, R3;
         R1 = MyMatrix3f::rotation(angle1 + anglesOffset[0],MyVector3f(0,0,1));
         R2 = MyMatrix3f::rotation(angle2 + anglesOffset[1],MyVector3f(1,0,0));
+        R3 = MyMatrix3f::rotation(angle3 + anglesOffset[2],MyVector3f(1,0,0));
 
-        R3 = MyMatrix3f::rotation(angle3 + anglesOffset[2],MyVector3f(0,1,0));
-        R4 = MyMatrix3f::rotation(angle4 + anglesOffset[3],MyVector3f(1,0,0));
-
-    return legOrigin[legIndex] + legOrientation[legIndex] * R1 * R2 * legLength1 + legOrientation[legIndex] * R1 * R2 * R3 * R4 * legLength2;
+    return  legOrigin[legIndex] +
+            legOrientation[legIndex] * R1 * legLength1 +
+            legOrientation[legIndex] * R1 * R2 * legLength2 +
+            legOrientation[legIndex] * R1 * R2 * R3 * legLength3;
 }
-MyVector3f ForwardKinematics::getLegExtremityPosition(int legIndex, LegAngleVector angles)
+MyVector3f ForwardKinematics::getLegExtremityPosition(int legIndex, const LegAngleVector& angles)
 {
-    return getLegExtremityPosition(legIndex, angles.angle1, angles.angle2, angles.angle3, angles.angle4);
+    return getLegExtremityPosition(legIndex, angles.angle1, angles.angle2, angles.angle3);
 }
 
-
-MyVector3f ForwardKinematics::getLegInterJointPosition(int legIndex,const float& angle1,const float& angle2)
+std::pair<MyVector3f, MyVector3f> ForwardKinematics::getDistanceSensorPositonDirection(int legIndex, const float& angle1, const float& angle2, const float& angle3)
 {
-    MyMatrix3f R1,R2;
+    MyMatrix3f R1, R2, R3;
         R1 = MyMatrix3f::rotation(angle1 + anglesOffset[0],MyVector3f(0,0,1));
         R2 = MyMatrix3f::rotation(angle2 + anglesOffset[1],MyVector3f(1,0,0));
+        R3 = MyMatrix3f::rotation(angle3 + anglesOffset[2],MyVector3f(1,0,0));
 
-    return legOrigin[legIndex] + legOrientation[legIndex]*R1*R2*legLength1;
+    return std::pair<MyVector3f, MyVector3f>(
+        legOrigin[legIndex] +
+        legOrientation[legIndex] * R1 * legLength1 +
+        legOrientation[legIndex] * R1 * R2 * legLength2 +
+        legOrientation[legIndex] * R1 * R2 * R3 * sensorPosition ,
+        R1 * R2 * R3 * MyVector3f(0, 0, 1)   );
 }
-MyVector3f ForwardKinematics::getLegInterJointPosition(int legIndex, LegAngleVector angles)
+std::pair<MyVector3f, MyVector3f> ForwardKinematics::getDistanceSensorPositonDirection(int legIndex, const LegAngleVector& angles)
 {
-    return getLegInterJointPosition(legIndex, angles.angle1, angles.angle2);
+    return getDistanceSensorPositonDirection(legIndex, angles.angle1, angles.angle2, angles.angle3);
 }
-
-
-MyVector3f ForwardKinematics::getLegPointingDirection(int legIndex, const float& angle1, const float& angle2, const float& angle3, const float& angle4)
+MyVector3f ForwardKinematics::getDistanceSensorDirection(int legIndex, const float& angle1, const float& angle2, const float& angle3)
 {
-    MyMatrix3f R1, R2, R3, R4;
-        R1 = MyMatrix3f::rotation(angle1,MyVector3f(0,0,1));
-        R2 = MyMatrix3f::rotation(angle2,MyVector3f(1,0,0));
-
-        R3 = MyMatrix3f::rotation(angle3,MyVector3f(0,1,0));
-        R4 = MyMatrix3f::rotation(angle4,MyVector3f(1,0,0));
-
-    return (legOrientation[legIndex] * R1 * R2 * R3 * R4 * legLength2).normalize();
+    return getDistanceSensorPositonDirection(legIndex, angle1, angle2, angle3).second;
 }
-MyVector3f ForwardKinematics::getLegPointingDirection(int legIndex, LegAngleVector angles)
+MyVector3f ForwardKinematics::getDistanceSensorDirection(int legIndex, const LegAngleVector& angles)
 {
-    return getLegPointingDirection(legIndex,angles.angle1,angles.angle2,angles.angle3,angles.angle4);
+    return getDistanceSensorPositonDirection(legIndex, angles.angle1, angles.angle2, angles.angle3).second;
+}
+MyVector3f ForwardKinematics::getDistanceSensorPositon(int legIndex, const float& angle1, const float& angle2, const float& angle3)
+{
+    return getDistanceSensorPositonDirection(legIndex, angle1, angle2, angle3).first;
+}
+MyVector3f ForwardKinematics::getDistanceSensorPositon(int legIndex, const LegAngleVector& angles)
+{
+    return getDistanceSensorPositonDirection(legIndex, angles.angle1, angles.angle2, angles.angle3).first;
 }
 //
 

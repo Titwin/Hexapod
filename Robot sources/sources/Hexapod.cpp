@@ -1,13 +1,13 @@
 #include "Hexapod.hpp"
 
-#define ZERO_HEIGHT (-7)
-#define STEP_LENGTH 7
-#define RADIUS_DOMAIN 20
-#define DOMAIN_ANGLE 40
+#define ZERO_HEIGHT (-6.9)
+#define STEP_LENGTH 5
+#define RADIUS_DOMAIN 17
+#define DOMAIN_ANGLE 45
 
 
 //  Default
-const uint8_t Hexapod::motorIDs[24] = {2,3,4,5, 6,7,8,9, 10,11,12,13, 14,15,16,17, 18,19,20,21, 22,23,24,25};
+const uint8_t Hexapod::motorIDs[18] = {2,3,4, 5,6,7, 8,9,10, 11,12,13, 14,15,16, 17,18,19};
 Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
 {
     forwardKModule = new ForwardKinematics();
@@ -21,35 +21,29 @@ Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
     takeoffdownPosition = new MyVector3f[6];
 
     //{ Initialize angles offsets
-        motorAnglesOffset[0][0] = -52;    sens[0][0] = -1;
-        motorAnglesOffset[0][1] = -15;    sens[0][1] =  1;
-        motorAnglesOffset[0][2] =  5;     sens[0][2] = -1;
-        motorAnglesOffset[0][3] =  0;     sens[0][3] =  1;
+        motorAnglesOffset[0][0] = 0;   sens[0][0] = -1;
+        motorAnglesOffset[0][1] = 0;   sens[0][1] =  1;
+        motorAnglesOffset[0][2] = 0;   sens[0][2] = -1;
 
-        motorAnglesOffset[1][0] = -25;    sens[1][0] = -1;
-        motorAnglesOffset[1][1] =  50;    sens[1][1] =  1;
-        motorAnglesOffset[1][2] =  0;     sens[1][2] = -1;
-        motorAnglesOffset[1][3] =  10;    sens[1][3] =  1;
+        motorAnglesOffset[1][0] = -24; sens[1][0] = -1;
+        motorAnglesOffset[1][1] = -31; sens[1][1] =  1;
+        motorAnglesOffset[1][2] =  8;  sens[1][2] = -1;
 
-        motorAnglesOffset[2][0] = -15;    sens[2][0] = -1;
-        motorAnglesOffset[2][1] = -21;    sens[2][1] =  1;
-        motorAnglesOffset[2][2] =  32;    sens[2][2] = -1;
-        motorAnglesOffset[2][3] = -32;    sens[2][3] =  1;
+        motorAnglesOffset[2][0] = -55; sens[2][0] = -1;
+        motorAnglesOffset[2][1] = -17; sens[2][1] = -1;
+        motorAnglesOffset[2][2] = -5;  sens[2][2] = -1;
 
-        motorAnglesOffset[3][0] = -12;    sens[3][0] = -1;
-        motorAnglesOffset[3][1] = -17;    sens[3][1] =  1;
-        motorAnglesOffset[3][2] =  40;    sens[3][2] = -1;
-        motorAnglesOffset[3][3] =  80;    sens[3][3] =  1;
+        motorAnglesOffset[3][0] = 0;   sens[3][0] = -1;
+        motorAnglesOffset[3][1] = 0;   sens[3][1] =  1;
+        motorAnglesOffset[3][2] = 0;   sens[3][2] = -1;
 
-        motorAnglesOffset[4][0] = -14;    sens[4][0] = -1;
-        motorAnglesOffset[4][1] =  -10;    sens[4][1] =  1;
-        motorAnglesOffset[4][2] = -50;    sens[4][2] = -1;
-        motorAnglesOffset[4][3] = -33;    sens[4][3] =  1;
+        motorAnglesOffset[4][0] =  7;  sens[4][0] = -1;
+        motorAnglesOffset[4][1] = -31; sens[4][1] =  1;
+        motorAnglesOffset[4][2] = -14; sens[4][2] = -1;
 
-        motorAnglesOffset[5][0] = -4;     sens[5][0] = -1;
-        motorAnglesOffset[5][1] =  51;    sens[5][1] =  1;
-        motorAnglesOffset[5][2] =  15;    sens[5][2] = -1;
-        motorAnglesOffset[5][3] =  0;     sens[5][3] =  1;
+        motorAnglesOffset[5][0] = 145; sens[5][0] = -1;
+        motorAnglesOffset[5][1] =  19; sens[5][1] =  1;
+        motorAnglesOffset[5][2] = -40; sens[5][2] = -1;
     //}
 
     //{ Initialize legs machine state attributes
@@ -90,9 +84,8 @@ Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
         for(int i=0;i<6;i++)
         {
             blockAnimFlag[i] = false;
-            legsIncidence[i] = 0;
             takeoffdownPosition[i] = legDomainCenter[i];
-            targetAnglesArray[i] = LegAngleVector(0.0, 0.0, 0.0, 0.0);
+            targetAnglesArray[i] = LegAngleVector(0.0, 0.0, 0.0);
         }
     //}
 
@@ -123,13 +116,13 @@ void Hexapod::setMotorAngles(uint8_t* data)
 {
     for(unsigned int i=0; i<6; i++)
     {
-        motorAnglesArray[i].angle1 = sens[i][0]*((int)(data[8*i + 1]*256 + data[8*i    ]) - motorAnglesOffset[i][0] - 512.)/1024.*200.;
-        motorAnglesArray[i].angle2 = sens[i][1]*((int)(data[8*i + 3]*256 + data[8*i + 2]) - motorAnglesOffset[i][1] - 512.)/1024.*200.;
-        motorAnglesArray[i].angle3 = sens[i][2]*((int)(data[8*i + 5]*256 + data[8*i + 4]) - motorAnglesOffset[i][2] - 512.)/1024.*200.;
-        motorAnglesArray[i].angle4 = sens[i][3]*((int)(data[8*i + 7]*256 + data[8*i + 6]) - motorAnglesOffset[i][3] - 512.)/1024.*200.;
+        motorAnglesArray[i].angle1 = sens[i][0]*((int)(data[6*i + 1]*256 + data[6*i    ]) - motorAnglesOffset[i][0] - 512.)/1023.*200.;
+        motorAnglesArray[i].angle2 = sens[i][1]*((int)(data[6*i + 3]*256 + data[6*i + 2]) - motorAnglesOffset[i][1] - 512.)/1023.*200.;
+        motorAnglesArray[i].angle3 = sens[i][2]*((int)(data[6*i + 5]*256 + data[6*i + 4]) - motorAnglesOffset[i][2] - 512.)/1023.*200.;
     }
-    //int leg = 2;
-    //std::cout << motorAnglesArray[leg].angle1 << ' ' << motorAnglesArray[leg].angle2 << ' ' << motorAnglesArray[leg].angle3 << ' ' << motorAnglesArray[leg].angle4 << std::endl;
+    //int leg = 5;
+    //std::cout << (int)(data[6*leg+1]*256 + data[6*leg]) << ' ' << (int)(data[6*leg+3]*256 + data[6*leg+2]) << ' ' << (int)(data[6*leg+5]*256 + data[6*leg+4]) << std::endl;
+    //std::cout << motorAnglesArray[leg].angle1 << ' ' << motorAnglesArray[leg].angle2 << ' ' << motorAnglesArray[leg].angle3 << std::endl;
 }
 const uint8_t* Hexapod::getMotorsIds() const
 {
@@ -139,12 +132,17 @@ uint16_t* Hexapod::getGoalMotorAngles()
 {
     for(int i=0;i<6;i++)
     {
-        goalMotorAngle[4*i    ] = sens[i][0]*targetAnglesArray[i].angle1 * 1024/200. + 512 + motorAnglesOffset[i][0];
-        goalMotorAngle[4*i + 1] = sens[i][1]*targetAnglesArray[i].angle2 * 1024/200. + 512 + motorAnglesOffset[i][1];
-        goalMotorAngle[4*i + 2] = sens[i][2]*targetAnglesArray[i].angle3 * 1024/200. + 512 + motorAnglesOffset[i][2];
-        goalMotorAngle[4*i + 3] = sens[i][3]*targetAnglesArray[i].angle4 * 1024/200. + 512 + motorAnglesOffset[i][3];
+        goalMotorAngle[3*i    ] = sens[i][0]*targetAnglesArray[i].angle1 * 1024/200. + 512 + motorAnglesOffset[i][0];
+        goalMotorAngle[3*i + 1] = sens[i][1]*targetAnglesArray[i].angle2 * 1024/200. + 512 + motorAnglesOffset[i][1];
+        goalMotorAngle[3*i + 2] = sens[i][2]*targetAnglesArray[i].angle3 * 1024/200. + 512 + motorAnglesOffset[i][2];
     }
     return goalMotorAngle;
+}
+
+void Hexapod::getSensorsConfiguration(std::pair<MyVector3f, MyVector3f>* configuration) const
+{
+    for(int i=0; i<6; i++)
+        configuration[i] = forwardKModule->getDistanceSensorPositonDirection(i, motorAnglesArray[i]);
 }
 
 
@@ -160,10 +158,11 @@ void Hexapod::animate(float elapseTime, MyVector3f translationSpeed, MyVector3f 
 {
     for(int i=0; i<6; i++)
         legPosition[i] = forwardKModule->getLegExtremityPosition(i, motorAnglesArray[i]);
+    //std::cout<<legPosition[0]<<std::endl;
 
     //for(int i=3; i<6; i++)
-    //    targetAnglesArray[i] = inverseKModule->getAnglesFromExtremityAndIncidence(i, MyVector3f(-legPosition[i-3].x, legPosition[i-3].y, legPosition[i-3].z), 0, motorAnglesArray[i]);
-    //std::cout<<legPosition[5]<<std::endl;
+    //    targetAnglesArray[i] = inverseKModule->getAnglesFromExtremity(i, MyVector3f(-legPosition[i-3].x, legPosition[i-3].y, legPosition[i-3].z), motorAnglesArray[i]);
+    //std::cout<<legPosition[3]<<std::endl;
 
     switch(robotState)
     {
@@ -293,6 +292,7 @@ void Hexapod::animateWalk(float elapseTime, MyVector3f translationSpeed, MyVecto
         legDomainCenter[i].z += legDisplacement[i].z;
         takeoffdownPosition[i].z += legDisplacement[i].z;
         robotHeight += legDisplacement[i].z/6.f;
+        stepHeight -= legDisplacement[i].z/6.f;
 
         if(legsState[i] == AUTONOMOUS) continue;
         switch(legsState[i])
@@ -306,7 +306,7 @@ void Hexapod::animateWalk(float elapseTime, MyVector3f translationSpeed, MyVecto
             default: break;
         }
 
-        targetAnglesArray[i] = inverseKModule->getAnglesFromExtremityAndIncidence(i, legTarget[i], legsIncidence[i], motorAnglesArray[i]);
+        targetAnglesArray[i] = inverseKModule->getAnglesFromExtremity(i, legTarget[i], motorAnglesArray[i]);
     }
 }
 void Hexapod::animateGotoStart(float elapseTime)
@@ -318,16 +318,10 @@ void Hexapod::animateGotoStart(float elapseTime)
     for(int i=0;i<6;i++)
     {
         direction = legTrajectory[i].front().first - legTarget[i];
-        if(direction.length() < 0.5f && std::abs(legsIncidence[i]-legTrajectory[i].front().second) < 1)
+        if(direction.length() < 0.5f)
             legAtPosition++;
         else
-        {
-            legTarget[i] += 0.01f*elapseTime*direction.normalize();
-            if(legsIncidence[i] < legTrajectory[i].front().second)
-                legsIncidence[i] += 1;
-            else
-                legsIncidence[i] -= 1;
-        }
+            legTarget[i] += 0.01f * elapseTime * direction.normalize();
     }
 
     if(legAtPosition == 6)
@@ -342,7 +336,7 @@ void Hexapod::animateGotoStart(float elapseTime)
     {
         for(int i=0;i<6;i++)
         {
-            targetAnglesArray[i] = inverseKModule->getAnglesFromExtremityAndIncidence(i, legTarget[i], legsIncidence[i], motorAnglesArray[i]);
+            targetAnglesArray[i] = inverseKModule->getAnglesFromExtremity(i, legTarget[i], motorAnglesArray[i]);
         }
     }
 }
@@ -355,16 +349,10 @@ void Hexapod::animateTransition(float elapseTime)
     for(int i=0;i<6;i++)
     {
         direction = legTrajectory[i].front().first - legTarget[i];
-        if(direction.length() < 0.5f && std::abs(legsIncidence[i]-legTrajectory[i].front().second) < 1)
+        if(direction.length() < 0.5f)
             legAtPosition++;
         else
-        {
             legTarget[i] += 0.02f*elapseTime*direction.normalize();
-            if(legsIncidence[i] < legTrajectory[i].front().second)
-                legsIncidence[i] += 1;
-            else
-                legsIncidence[i] -= 1;
-        }
     }
 
     if(legAtPosition == 6)
@@ -390,18 +378,12 @@ void Hexapod::animateTransition(float elapseTime)
                 return;
             }
         }
-        if(legTrajectory[0].size() == 1)
-        {
-            if(robotGait==TETRAPOD || robotGait==METACHRONAL_4) {
-                   legsIncidence[2] = 40; legsIncidence[5] = -40; }
-            else { legsIncidence[2] = 0;  legsIncidence[5] = 0; }
-        }
     }
     else
     {
         for(int i=0;i<6;i++)
         {
-            targetAnglesArray[i] = inverseKModule->getAnglesFromExtremityAndIncidence(i,legTarget[i],legsIncidence[i],motorAnglesArray[i]);
+            targetAnglesArray[i] = inverseKModule->getAnglesFromExtremity(i, legTarget[i], motorAnglesArray[i]);
         }
     }
 }
@@ -414,18 +396,12 @@ void Hexapod::animateAutonomousLegs(float elapseTime)
         if(legTrajectory[i].size() != 0)
         {
             direction = legTrajectory[i].front().first - legTarget[i];
-            if(direction.length() < 0.5f && std::abs(legsIncidence[i]-legTrajectory[i].front().second) < 1)
+            if(direction.length() < 0.5f)
                 legTrajectory[i].pop_front();
             else
-            {
                 legTarget[i] += 0.01f*elapseTime*direction.normalize();
-                if(legsIncidence[i] < legTrajectory[i].front().second)
-                    legsIncidence[i] += 0.02f*elapseTime;
-                else
-                    legsIncidence[i] -= 0.02f*elapseTime;
-            }
 
-            targetAnglesArray[i] = inverseKModule->getAnglesFromExtremityAndIncidence(i,legTarget[i],legsIncidence[i],motorAnglesArray[i]);
+            targetAnglesArray[i] = inverseKModule->getAnglesFromExtremity(i, legTarget[i], motorAnglesArray[i]);
         }
         else if(!blockAnimFlag[i])
         {

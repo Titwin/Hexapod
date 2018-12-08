@@ -7,6 +7,7 @@ Network::Network()
     mutex = PTHREAD_MUTEX_INITIALIZER;
     nodeDiscoveryType = (int)NODE_LEGBOARD;
     nodeDiscoveryID = 0;
+    configuration = 0;
 }
 //
 
@@ -211,6 +212,14 @@ int Network::synchronizeScs15(const bool& verbose)
     uint8_t respondingIDN = 0;
     uint8_t idsSend[20];
     uint16_t posSend[20];
+
+    uint8_t syncIndex = 0;
+    uint8_t syncIds[20];
+    uint8_t syncTorque[20];
+    uint16_t syncTorqueLimit[20];
+    uint16_t syncSpeed[20];
+
+
     for(auto it = nodeMap[NODE_SCS15].begin(); it != nodeMap[NODE_SCS15].end(); it++)
     {
         Scs15* const scs15 = static_cast<Scs15*>(it->second);
@@ -234,14 +243,36 @@ int Network::synchronizeScs15(const bool& verbose)
         }
         else scs15->connectionFails++;
 
-        /// Send a sync packet
+        if(scs15->needSync && pos >= 0)
+        {
+            syncIds[syncIndex] = it->first;
+            syncTorque[syncIndex] = scs15->torque;
+            syncTorqueLimit[syncIndex] = scs15->torqueLimit;
+            syncSpeed[syncIndex] = scs15->speed;
+            syncIndex++;
+        }
+
+        /// Send sync packet
         if(respondingIDN == 20)
         {
           SCS15.syncSetPosition(idsSend, respondingIDN, posSend);
           respondingIDN = 0;
         }
+        if(syncIndex == 20)
+        {
+          SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
+          SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
+          SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
+          syncIndex = 0;
+        }
     }
     if(respondingIDN) SCS15.syncSetPosition(idsSend, respondingIDN, posSend);
+    if(syncIndex)
+    {
+      SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
+      SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
+      SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
+    }
     return updates;
 }
 int Network::synchronizeLegBoard(const bool& verbose)
@@ -285,7 +316,7 @@ int Network::synchronizeLegBoard(const bool& verbose)
                     TTLbusError++;
                 }
             }
-            else if((state&mask) == (1<<LegBoardController::DISTANCE_THSD))
+            else if((state&mask) == (1<<LegBoardController::DISTANCE_THSD) || configuration.load()&CONFIG_ACCURATE_DISTANCE)
             {
                 int d = LEGBOARD.getDistance(it->first);
                 if(d >= 0)
