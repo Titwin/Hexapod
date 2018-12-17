@@ -3,184 +3,259 @@
 #include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
+#include <pthread.h>
+#include <signal.h>
+#include <cstring>
+#include <termios.h>
 
-#include "sources/SerialProtocol.hpp"
-#include "sources/Server.hpp"
+#include "Network.hpp"
+#include "GamePad.hpp"
+#include "Hexapod.hpp"
+#include "bcm2835.h"
 
-#define FRAME_TIME 20
-#define END_TIME 4
+#define FRAME_TIME 20 //in ms
 
+
+/// prototypes
+void *TTLThreadMain(void* arg);
+void openSerialPort(std::string portName);
+void closeSerialPort();
+void setCPUAffinity(const  pthread_t& thread, const int& cpu, const std::string& threadName);
+//
+
+
+/// exit program gently
 bool finishProgram = false;
 void signalHandler(int sig)
 {
     finishProgram = true;
 }
+//
 
+
+/// global variables for thread synchronization
+Network* NET;
+//
+
+
+/// main program : robot control & planning
 int main()
 {
-    std::cout<<"Hello friend!"<<std::endl;
-    SerialProtocol uart;
-    Server robotServer(5012);
+    /// Initialization
     signal(SIGINT, &signalHandler);
+    setCPUAffinity(pthread_self(), 0, "Main");
+    std::cout<<"Hello friend !"<<std::endl;
+
+    if(!bcm2835_init())
+    {
+        std::cout<<"GPIO headers : wrong initialization"<<std::endl;
+        return -1;
+    }
+
+    GamePad gamepad;
+    openSerialPort("/dev/ttyAMA0");
+    Hexapod robot("Arane 2.0");
+    NET = new Network();
+    std::map<Network::NodeType, std::map<uint8_t, Network::Node*> > nodeMap;
+
+    pthread_t TTLThread;
+    pthread_create(&TTLThread, NULL, &TTLThreadMain, NULL);
+    setCPUAffinity(TTLThread, 1, "TTLThreadMain");
+
+    /// Wait to mapping finished
+    while(!finishProgram)
+    {
+        auto loopingTime = std::chrono::high_resolution_clock::now();
+        NET->getNodeMap(&nodeMap);
+        if(nodeMap[Network::NODE_SCS15].size() >= 18)
+            break;
+
+        std::cout << "Current mapping : " << std::endl;
+        std::cout << "  Motors SCS15 : " << nodeMap[Network::NODE_SCS15].size() << "/18 {";
+            for(auto it = nodeMap[Network::NODE_SCS15].begin(); it!= nodeMap[Network::NODE_SCS15].end(); ++it)
+                std::cout << (int)it->first << " ";
+        std::cout << "}" << std::endl << "  LegBoards : " << nodeMap[Network::NODE_LEGBOARD].size() << "/6 {";
+            for(auto it = nodeMap[Network::NODE_LEGBOARD].begin(); it!= nodeMap[Network::NODE_LEGBOARD].end(); ++it)
+                std::cout << (int)it->first << " ";
+        std::cout << "}" << std::endl;
+        gamepad.update();
+
+        while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < 500);
+    }
+
+
+    /// Last initialization
+    robot.setTorque(false);
+    NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, 0);
+    NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_SPEED, FRAME_TIME);
+    NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1023);
+    //NET->configuration = Network::CONFIG_ACCURATE_DISTANCE;
 
     std::cout<<"---------------------"<<std::endl;
     std::cout<<"Start looping"<<std::endl;
-    clock_t start = clock();
-    clock_t looping;
-
-//////
-    SerialProtocol::Message msgtest;
-    int count = 0;
-//////
+    std::chrono::time_point<std::chrono::system_clock> loopingTime = std::chrono::high_resolution_clock::now();
+    unsigned long long loopCount = 0;
 
     while(!finishProgram)
     {
+        loopingTime = std::chrono::high_resolution_clock::now();
 
-        count++;
-        count %= 3;
-        looping = clock();
-
-        //
-        if(robotServer.getClientCount()>0)
+        if(loopCount < 5)
         {
-            msgtest.first = RPI_INST_READ | RPI_TARGET_SCS15;
-            msgtest.second.clear();
-            msgtest.second.push_back(RPI_POSITION);
-            uart.send(msgtest);
+            NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_SPEED, FRAME_TIME);
+            NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1023);
+        }
+        if((loopCount%100) == 0)
+            NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_ACTION);
 
-            switch(count)
+        /// update/synchronize depending on scs15 nodes
+        NET->getNodeMap(&nodeMap);
+        bool complete = true;
+        uint16_t pos[18];
+        for(uint8_t id=2; id<20; id++)
+        {
+            auto it = nodeMap[Network::NODE_SCS15].find(id);
+            if(it != nodeMap[Network::NODE_SCS15].end())
             {
-                case 0:
-                    msgtest.first = RPI_INST_READ | RPI_TARGET_SCS15;
-                    msgtest.second.clear();
-                    msgtest.second.push_back(RPI_FAIL_NODE);
-                    uart.send(msgtest);
-                    break;
-
-                case 1:
-                    msgtest.first = RPI_INST_READ | RPI_TARGET_SCS15;
-                    msgtest.second.clear();
-                    msgtest.second.push_back(RPI_TORQUE);
-                    uart.send(msgtest);
-                    break;
-
-                case 2:
-                    msgtest.first = RPI_INST_READ | RPI_TARGET_SCS15;
-                    msgtest.second.clear();
-                    msgtest.second.push_back(RPI_TEMPERATURE);
-                    uart.send(msgtest);
-                    break;
-
-                default: break;
+                Network::Scs15* const scs15 = static_cast<Network::Scs15*>(it->second);
+                pos[id-2] = scs15->presentPos;
             }
+            else
+            {
+                complete = false;
+                break;
+            }
+        }
+        if(complete)
+            robot.setMotorAngles((uint8_t*)pos);
+        else std::cout<<"missing data for good robot update  " <<nodeMap[Network::NODE_SCS15].size()<<"/24"<<std::endl;
+        NET->setSyncNodeAttributes(Network::NODE_SCS15, Network::SCS15_TARGET_POSITION, 18, robot.getMotorsIds(), robot.getGoalMotorAngles());
+
+        /// Distance sensors
+        if((loopCount%25) == 0)
+        {
+            std::pair<MyVector3f, MyVector3f> sensorConfig[6];
+            robot.getSensorsConfiguration(sensorConfig);
+            for(int i=0; i<6; i++)
+            {
+                short d = -1;
+                if(nodeMap[Network::NODE_LEGBOARD].find(i +2) != nodeMap[Network::NODE_LEGBOARD].end())
+                {
+                    Network::LegBoard* const lb = static_cast<Network::LegBoard*>(nodeMap[Network::NODE_LEGBOARD][i+2]);
+                    d = std::min(lb->distance, (uint16_t)2000);
+                }
+
+                std::cout<<"sensor "<<i<<std::endl;
+                std::cout<<"  position : " <<sensorConfig[i].first<<std::endl;
+                std::cout<<"  direction : " <<sensorConfig[i].second<<std::endl;
+                std::cout<<"  distance : " <<d<<std::endl;
+            }
+            std::cout<<std::endl;
         }
 
 
-        //
-        std::string msgData;
-        while(uart.validMessageCount())
+        /// update depending to gamepad
+        gamepad.update();
+        if(gamepad.connected() && gamepad.instantPressed(GamePad::BACK))
         {
-            SerialProtocol::Message msg = uart.getMessage();
-            switch(msg.first)
-            {
-                case RPI_INST_ACK: break;
-
-                case RPI_INST_READ|RPI_TARGET_CONTROL:
-                    msgData.clear();
-                    for(unsigned int i = 1; i<msg.second.size(); i++)
-                    {
-                        std::ostringstream oss;
-                        oss << (int)msg.second[i];
-                        msgData += std::string(oss.str()) + ' ';
-                    }
-                    robotServer.pushMessage("Arduino_control ",msgData);
-                    break;
-
-                case RPI_INST_READ|RPI_TARGET_SCS15:
-                    switch(msg.second[0])
-                    {
-                        case RPI_FAIL_NODE:
-                            msgData.clear();
-                            for(unsigned int i = 1; i<msg.second.size(); i++)
-                            {
-                                std::ostringstream oss;
-                                oss << (int)msg.second[i];
-                                msgData += std::string(oss.str()) + ' ';
-                            }
-                            robotServer.pushMessage("SCS15_fail ",msgData);
-                            break;
-
-                        case RPI_POSITION:
-                            msgData.clear();
-                            for(unsigned int i = 1; i<msg.second.size(); i+=2)
-                            {
-                                std::ostringstream oss;
-                                oss << (int)(msg.second[i+1]*256 + msg.second[i]);
-                                msgData += std::string(oss.str()) + ' ';
-                            }
-                            robotServer.pushMessage("SCS15_position ",msgData);
-                            break;
-
-                        case RPI_TORQUE:
-                            msgData.clear();
-                            for(unsigned int i = 1; i<msg.second.size(); i+=2)
-                            {
-                                std::ostringstream oss;
-                                oss << (int)(msg.second[i+1]*256 + msg.second[i]);
-                                msgData += std::string(oss.str()) + ' ';
-                            }
-                            robotServer.pushMessage("SCS15_torque ",msgData);
-                            break;
-
-                        case RPI_TEMPERATURE:
-                            msgData.clear();
-                            for(unsigned int i = 1; i<msg.second.size(); i++)
-                            {
-                                std::ostringstream oss;
-                                oss << (int)(msg.second[i+1]*256 + msg.second[i]);
-                                msgData += std::string(oss.str()) + ' ';
-                            }
-                            robotServer.pushMessage("SCS15_temperature ",msgData);
-                            break;
-
-                        default:
-                            std::cout<<"unknown target 2";
-                            uart.debug(msg);
-                            break;
-                    }
-                    break;
-
-                case RPI_INST_READ|RPI_TARGET_ANALOG:
-                    msgData.clear();
-                    for(unsigned int i = 1; i<msg.second.size(); i++)
-                    {
-                        std::ostringstream oss;
-                        oss << (int)msg.second[i];
-                        msgData += std::string(oss.str()) + ' ';
-                    }
-                    robotServer.pushMessage("Analog_in ",msgData);
-                    break;
-
-                default:
-                    std::cout<<"unknown msg"<<std::endl;
-                    uart.debug(msg);
-                    break;
-            }
+            robot.setTorque(!robot.getTorque());
+            NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, (robot.getTorque()?1:0));
         }
-///
-        robotServer.update();
-///
-        while((double)(clock() - looping)/1000 < FRAME_TIME - END_TIME);
-        uart.update(END_TIME);
-        while((double)(clock() - looping)/1000 < FRAME_TIME);
-        uint64_t timeclock = (double)(clock() - start)/1000;
-		//std::cout << timeclock << std::endl;
-		if(timeclock >= 300000) break;
+        if(gamepad.instantPressed(GamePad::START))
+            robot.setState(Hexapod::INIT);
+        MyVector3f translate(gamepad.getExpAxis(GamePad::AXIS_1X), -gamepad.getExpAxis(GamePad::AXIS_1Y), 0);
+        if(gamepad.getAxis(GamePad::AXIS_3Y) < 0)
+            translate.z = 0.1f;
+        else if(gamepad.getAxis(GamePad::AXIS_3Y) > 0)
+            translate.z = -0.1f;
+        MyVector3f rotate(-gamepad.getExpAxis(GamePad::AXIS_2X), 0, 0);
+        robot.animate(FRAME_TIME, 0.3f*translate, 0.01f*rotate);
+
+        /// end
+        loopCount++;
+        //std::cout << "Main : " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() << "ms" <<std::endl;
+        while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < FRAME_TIME);
     }
 
     std::cout<<"---------------------"<<std::endl;
     std::cout<<"End of program. Farewell my friend !"<<std::endl;
+
+    pthread_join(TTLThread, NULL);
+    closeSerialPort();
+    bcm2835_close();
+
     return 0;
+}
+//
+
+
+/// TTL bus communication thread
+bool verbose = false;
+void* TTLThreadMain(void* arg)
+{
+    //std::chrono::time_point<std::chrono::system_clock> startTime = std::chrono::high_resolution_clock::now();
+    std::chrono::time_point<std::chrono::system_clock> loopingTime = std::chrono::high_resolution_clock::now();
+    NET->initialize(verbose);
+
+    while(!finishProgram)
+    {
+        loopingTime = std::chrono::high_resolution_clock::now();
+
+        NET->synchonize(verbose);
+        while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < FRAME_TIME - 6)
+            NET->nodeScan(verbose);
+        while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < FRAME_TIME - 2)
+            NET->scheduler();
+
+        /// end
+		//std::cout << "TTLbus : " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() << "ms" <<std::endl;
+        while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < FRAME_TIME);
+    }
+    return NULL;
+}
+//
+
+/// Usefull functions
+void openSerialPort(std::string portName)
+{
+    std::cout<<"Connecting :  "<<portName;
+
+    struct termios tio;
+
+    memset(&tio,0,sizeof(tio));
+    tio.c_iflag = 0;
+    tio.c_oflag = 0;
+    tio.c_cflag = CS8|CREAD|CLOCAL;
+    tio.c_lflag = 0;
+    tio.c_cc[VMIN] = 1;
+    tio.c_cc[VTIME] = 0;
+
+    TTLbusController::tty_fd = open(portName.c_str(), O_RDWR | O_NONBLOCK);
+    cfsetospeed(&tio, B1000000);
+    cfsetispeed(&tio, B1000000);
+
+    tcsetattr(TTLbusController::tty_fd, TCSANOW, &tio);
+    tcflush(TTLbusController::tty_fd, TCIOFLUSH);
+
+    if(TTLbusController::tty_fd < 0) std::cout<<"\nUnable to open port name"<<std::endl;
+    else std::cout<<"   ... OK"<<std::endl;
+}
+void closeSerialPort(){close(TTLbusController::tty_fd);}
+void setCPUAffinity(const pthread_t& thread, const int& cpu, const std::string& threadName)
+{
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);
+
+    if(pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset) !=0)
+        std::cout << "ERROR while changing CPU affinity for " << threadName << " with CPU " << cpu <<std::endl;
+    if(pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset) != 0)
+        std::cout << "ERROR while checking CPU affinity for " << threadName <<std::endl;
+
+    std::cout << "CPU affinity for " << threadName << " :";
+    for(int j=0; j<CPU_SETSIZE; j++)
+        if (CPU_ISSET(j, &cpuset))
+            std::cout << j << ' ';
+    std::cout << std::endl;
 }
 

@@ -104,7 +104,8 @@ class VL53L0X
 		//
 
 		//	public functions
-		bool init(bool io_2v8 = true);
+		uint8_t init(bool io_2v8 = true);
+		bool testI2C();
 		void startContinuous(uint32_t period_ms = 0);
 		void stopContinuous(void);
 		uint16_t fastReadRange(void);

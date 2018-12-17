@@ -8,6 +8,8 @@
 	#define NULL 0
 #endif
 
+#define COURTESY_DELAY 2
+
 #define ADDRESS_DEFAULT 0x29
 #define startTimeout() (timeout_start_ms = TIME.millis)
 #define checkTimeoutExpired() (io_timeout > 0 && ((uint16_t)TIME.millis - timeout_start_ms) > io_timeout)
@@ -19,7 +21,7 @@
 extern TWI I2C;
 
 // Default
-VL53L0X::VL53L0X(void) : address(ADDRESS_DEFAULT) , io_timeout(0), did_timeout(false)
+VL53L0X::VL53L0X(void) : address(ADDRESS_DEFAULT) , io_timeout(500), did_timeout(false)
 {}
 
 
@@ -33,6 +35,17 @@ void VL53L0X::setAddress(uint8_t new_addr)
 	address = new_addr;
 }
 
+bool VL53L0X::testI2C()
+{
+	if(!I2C.ping(address)) return false;
+	if(readReg(0xC0) != 0xEE) return false;
+	if(readReg(0xC1) != 0xAA) return false;
+	if(readReg(0xC2) != 0x10) return false;
+	if(readReg16Bit(0x51) != 0x0099) return false;
+	if(readReg16Bit(0x61) != 0x0000) return false;
+	return true;
+}
+
 
 // Initialize sensor using sequence based on VL53L0X_DataInit(),
 // VL53L0X_StaticInit(), and VL53L0X_PerformRefCalibration().
@@ -42,11 +55,11 @@ void VL53L0X::setAddress(uint8_t new_addr)
 // enough unless a cover glass is added.
 // If io_2v8 (optional) is true or not given, the sensor is configured for 2V8
 // mode.
-bool VL53L0X::init(bool io_2v8)
+uint8_t VL53L0X::init(bool io_2v8)
 {
-	// ping i2c address
-	if(I2C.write(TWI_INST_READ, address, 0, NULL))
-		return false;
+	// ping i2c address & test some registers
+	if(!I2C.ping(address))
+		return 1;
 
 	// sensor uses 1V8 mode for I/O by default; switch to 2V8 mode if necessary
 	if (io_2v8)
@@ -54,13 +67,14 @@ bool VL53L0X::init(bool io_2v8)
 		writeReg(VHV_CONFIG_PAD_SCL_SDA__EXTSUP_HV,
 		readReg(VHV_CONFIG_PAD_SCL_SDA__EXTSUP_HV) | 0x01); // set bit 0
 	}
+	
 
 	// "Set I2C standard mode"
 	writeReg(0x88, 0x00);
+
 	writeReg(0x80, 0x01);
 	writeReg(0xFF, 0x01);
 	writeReg(0x00, 0x00);
-
 	stop_variable = readReg(0x91);
 	writeReg(0x00, 0x01);
 	writeReg(0xFF, 0x00);
@@ -68,26 +82,36 @@ bool VL53L0X::init(bool io_2v8)
 
 	// disable SIGNAL_RATE_MSRC (bit 1) and SIGNAL_RATE_PRE_RANGE (bit 4) limit checks
 	writeReg(MSRC_CONFIG_CONTROL, readReg(MSRC_CONFIG_CONTROL) | 0x12);
-	setSignalRateLimit(0.25);
+
+	// set final range signal rate limit to 0.25 MCPS (million counts per second)
+	setSignalRateLimit(0.1);
+
 	writeReg(SYSTEM_SEQUENCE_CONFIG, 0xFF);
+	// VL53L0X_DataInit() end
+
+	// VL53L0X_StaticInit() begin
 
 	uint8_t spad_count;
 	bool spad_type_is_aperture;
 	if (!getSpadInfo(&spad_count, &spad_type_is_aperture))
-		return false;
-
+		return 2;
+	//TIME.delay(COURTESY_DELAY);
+	
+	
 	// The SPAD map (RefGoodSpadMap) is read by VL53L0X_get_info_from_device() in
 	// the API, but the same data seems to be more easily readable from
 	// GLOBAL_CONFIG_SPAD_ENABLES_REF_0 through _6, so read it from there
 	uint8_t ref_spad_map[6];
 	readMulti(GLOBAL_CONFIG_SPAD_ENABLES_REF_0, ref_spad_map, 6);
 
-	// -- VL53L0X_set_reference_spads() begin
+	// -- VL53L0X_set_reference_spads() begin (assume NVM values are valid)
+
 	writeReg(0xFF, 0x01);
 	writeReg(DYNAMIC_SPAD_REF_EN_START_OFFSET, 0x00);
 	writeReg(DYNAMIC_SPAD_NUM_REQUESTED_REF_SPAD, 0x2C);
 	writeReg(0xFF, 0x00);
 	writeReg(GLOBAL_CONFIG_REF_EN_START_SELECT, 0xB4);
+
 	uint8_t first_spad_to_enable = spad_type_is_aperture ? 12 : 0; // 12 is the first aperture spad
 	uint8_t spads_enabled = 0;
 
@@ -104,11 +128,15 @@ bool VL53L0X::init(bool io_2v8)
 			spads_enabled++;
 		}
 	}
+
 	writeMulti(GLOBAL_CONFIG_SPAD_ENABLES_REF_0, ref_spad_map, 6);
 
+	// -- VL53L0X_set_reference_spads() end
 
 	// -- VL53L0X_load_tuning_settings() begin
-	TIME.delay(1);
+	// DefaultTuningSettings from vl53l0x_tuning.h
+
+	TIME.delay(COURTESY_DELAY);
 	writeReg(0xFF, 0x01);
 	writeReg(0x00, 0x00);
 
@@ -145,6 +173,7 @@ bool VL53L0X::init(bool io_2v8)
 	writeReg(0x64, 0x00);
 	writeReg(0x65, 0x00);
 	writeReg(0x66, 0xA0);
+	//TIME.delay(COURTESY_DELAY);
 
 	writeReg(0xFF, 0x01);
 	writeReg(0x22, 0x32);
@@ -177,6 +206,7 @@ bool VL53L0X::init(bool io_2v8)
 	writeReg(0x4B, 0x09);
 	writeReg(0x4C, 0x05);
 	writeReg(0x4D, 0x04);
+	//TIME.delay(COURTESY_DELAY);
 
 	writeReg(0xFF, 0x00);
 	writeReg(0x44, 0x00);
@@ -202,143 +232,103 @@ bool VL53L0X::init(bool io_2v8)
 	writeReg(0x00, 0x01);
 	writeReg(0xFF, 0x00);
 	writeReg(0x80, 0x00);
-	TIME.delay(1);
+	TIME.delay(COURTESY_DELAY);
 
+	// -- VL53L0X_load_tuning_settings() end
+
+	// "Set interrupt config to new sample ready"
 	// -- VL53L0X_SetGpioConfig() begin
+
 	writeReg(SYSTEM_INTERRUPT_CONFIG_GPIO, 0x04);
 	writeReg(GPIO_HV_MUX_ACTIVE_HIGH, readReg(GPIO_HV_MUX_ACTIVE_HIGH) & ~0x10); // active low
 	writeReg(SYSTEM_INTERRUPT_CLEAR, 0x01);
-	measurement_timing_budget_us = getMeasurementTimingBudget();
-	TIME.delay(1);
 
+	// -- VL53L0X_SetGpioConfig() end
+
+	measurement_timing_budget_us = getMeasurementTimingBudget();
+	TIME.delay(COURTESY_DELAY);
+	// "Disable MSRC and TCC by default"
+	// MSRC = Minimum Signal Rate Check
+	// TCC = Target CentreCheck
 	// -- VL53L0X_SetSequenceStepEnable() begin
+
 	writeReg(SYSTEM_SEQUENCE_CONFIG, 0xE8);
+
+	// -- VL53L0X_SetSequenceStepEnable() end
+	
+	// "Recalculate timing budget"
 	setMeasurementTimingBudget(measurement_timing_budget_us);
 
+	// VL53L0X_StaticInit() end
+
+	// VL53L0X_PerformRefCalibration() begin (VL53L0X_perform_ref_calibration())
+
 	// -- VL53L0X_perform_vhv_calibration() begin
-	TIME.delay(1);
+	TIME.delay(COURTESY_DELAY);
 	writeReg(SYSTEM_SEQUENCE_CONFIG, 0x01);
 	if (!performSingleRefCalibration(0x40))
-	return false;
+		return 3;
+
+	// -- VL53L0X_perform_vhv_calibration() end
 
 	// -- VL53L0X_perform_phase_calibration() begin
-	TIME.delay(1);
+	TIME.delay(COURTESY_DELAY);
 	writeReg(SYSTEM_SEQUENCE_CONFIG, 0x02);
 	if (!performSingleRefCalibration(0x00))
-	return false;
+		return 4;
+
+	// -- VL53L0X_perform_phase_calibration() end
+
+	// "restore the previous Sequence Config"
 	writeReg(SYSTEM_SEQUENCE_CONFIG, 0xE8);
 
-	return true;
+	// VL53L0X_PerformRefCalibration() end
+
+	return 0;
 }
 
-// Write an 8-bit register
+
 void VL53L0X::writeReg(uint8_t reg, uint8_t value)
 {
-	uint8_t msg[] = {reg, value};
-	last_status = I2C.write(TWI_INST_WRITE, address, 2, msg);
+	last_status = I2C.write(address, reg, 1, &value);
 }
-
-// Write a 16-bit register
 void VL53L0X::writeReg16Bit(uint8_t reg, uint16_t value)
 {
-	uint8_t msg[] = {reg, (value>>8)&0xFF, value&0xFF};
-	last_status = I2C.write(TWI_INST_WRITE, address, 3, msg);
+	last_status = I2C.write(address, reg, 2, (uint8_t*)&value);
 }
-
-// Write a 32-bit register
 void VL53L0X::writeReg32Bit(uint8_t reg, uint32_t value)
 {
-	uint8_t msg[] = {reg, (value>>24)&0xFF, (value>>16)&0xFF, (value>>8)&0xFF, value&0xFF};
-	last_status = I2C.write(TWI_INST_WRITE, address, 5, msg);
+	last_status = I2C.write(address, reg, 4, (uint8_t*)&value);
 }
 
-// Read an 8-bit register
+
 uint8_t VL53L0X::readReg(uint8_t reg)
 {
 	uint8_t value;
-	uint8_t msg[] = {reg, value};
-	last_status = I2C.write(TWI_INST_WRITE, address, 2, msg);
-
-
-
-
-
-
-  
-
-  /*Wire.beginTransmission(address);
-  Wire.write(reg);
-  last_status = Wire.endTransmission();
-
-  Wire.requestFrom(address, (uint8_t)1);
-  value = Wire.read();
-  */
-  return value;
+	last_status = I2C.read(address, reg, 1, &value);
+	return value;
 }
-
-// Read a 16-bit register
 uint16_t VL53L0X::readReg16Bit(uint8_t reg)
 {
-  uint16_t value;
-
-  /*Wire.beginTransmission(address);
-  Wire.write(reg);
-  last_status = Wire.endTransmission();
-
-  Wire.requestFrom(address, (uint8_t)2);
-  value  = (uint16_t)Wire.read() << 8; // value high byte
-  value |=           Wire.read();      // value low byte
-  */
-  return value;
+	uint8_t msg[2];
+	last_status = I2C.read(address, reg, 2, msg);
+	return ((uint16_t)msg[0]<<8)|msg[1];
 }
-
-// Read a 32-bit register
 uint32_t VL53L0X::readReg32Bit(uint8_t reg)
 {
-  uint32_t value;
-
-  /*Wire.beginTransmission(address);
-  Wire.write(reg);
-  last_status = Wire.endTransmission();
-
-  Wire.requestFrom(address, (uint8_t)4);
-  value  = (uint32_t)Wire.read() << 24; // value highest byte
-  value |= (uint32_t)Wire.read() << 16;
-  value |= (uint16_t)Wire.read() <<  8;
-  value |=           Wire.read();       // value lowest byte
-  */
-  return value;
+	uint8_t msg[4];
+	last_status = I2C.read(address, reg, 4, msg);
+	return ((uint32_t)msg[0]<<24)|((uint32_t)msg[1]<<16)|((uint32_t)msg[2]<<8)|msg[3];
 }
 
-// Write an arbitrary number of bytes from the given array to the sensor,
-// starting at the given register
+
 void VL53L0X::writeMulti(uint8_t reg, uint8_t const * src, uint8_t count)
 {
-  /*Wire.beginTransmission(address);
-  Wire.write(reg);
-
-  while (count-- > 0)
-  {
-    Wire.write(*(src++));
-  }
-
-  last_status = Wire.endTransmission();*/
+	last_status = I2C.write(address, reg, count, src);
 }
-
-// Read an arbitrary number of bytes from the sensor, starting at the given
-// register, into the given array
 void VL53L0X::readMulti(uint8_t reg, uint8_t * dst, uint8_t count)
 {
-  /*Wire.beginTransmission(address);
-  Wire.write(reg);
-  last_status = Wire.endTransmission();
-
-  Wire.requestFrom(address, count);
-
-  while (count-- > 0)
-  {
-    *(dst++) = Wire.read();
-  }*/
+	last_status = I2C.read(address, reg, count, dst);
 }
 
 // Set the return signal rate limit check value in units of MCPS (mega counts
@@ -534,7 +524,7 @@ bool VL53L0X::setVcselPulsePeriod(vcselPeriodType type, uint8_t period_pclks)
   // using the new VCSEL period.
   //
   // For the MSRC timeout, the same applies - this timeout being
-  // dependant on the pre-range vcsel period."
+  // dependent on the pre-range vcsel period."
 
 
   if (type == VcselPeriodPreRange)
@@ -675,6 +665,7 @@ bool VL53L0X::setVcselPulsePeriod(vcselPeriodType type, uint8_t period_pclks)
   // "Finally, the timing budget must be re-applied"
 
   setMeasurementTimingBudget(measurement_timing_budget_us);
+  TIME.delay(COURTESY_DELAY);
 
   // "Perform the phase calibration. This is needed after changing on vcsel period."
   // VL53L0X_perform_phase_calibration() begin
@@ -806,7 +797,7 @@ uint16_t VL53L0X::readRangeSingleMillimeters(void)
   writeReg(SYSRANGE_START, 0x01);
 
   // "Wait until start bit has been cleared"
-  TIME.delay(1);
+  TIME.delay(COURTESY_DELAY);
   startTimeout();
   while (readReg(SYSRANGE_START) & 0x01)
   {
@@ -851,7 +842,8 @@ bool VL53L0X::getSpadInfo(uint8_t * count, bool * type_is_aperture)
 
   writeReg(0x94, 0x6b);
   writeReg(0x83, 0x00);
-  TIME.delay(1);
+
+  TIME.delay(COURTESY_DELAY);
   startTimeout();
   while (readReg(0x83) == 0x00)
   {
@@ -982,7 +974,8 @@ uint32_t VL53L0X::timeoutMicrosecondsToMclks(uint32_t timeout_period_us, uint8_t
 bool VL53L0X::performSingleRefCalibration(uint8_t vhv_init_byte)
 {
   writeReg(SYSRANGE_START, 0x01 | vhv_init_byte); // VL53L0X_REG_SYSRANGE_MODE_START_STOP
-  TIME.delay(1);
+  TIME.delay(COURTESY_DELAY);
+
   startTimeout();
   while ((readReg(RESULT_INTERRUPT_STATUS) & 0x07) == 0)
   {

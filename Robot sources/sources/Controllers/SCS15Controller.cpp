@@ -107,12 +107,6 @@ bool SCS15Controller::debug(const uint8_t& ID, uint8_t* response)
         std::cout << "Voltage: " << (int)buf[67] << std::endl;
         std::cout << "Temperature: " << (int)buf[68] << std::endl;
 
-        //std::cout << "Registred instruction: "); << (int)buf[69]);
-        //std::cout << "Error: ");               << (int)buf[5]);
-        //std::cout << "Moving: ");              << (buf[71]?"yes":"no"));
-        //std::cout << "Vir position: ");        << bytes2Int(buf[73], buf[72]));
-        //std::cout << "Current: ");             << bytes2Int(buf[75], buf[74]));
-
         std::cout << "------------*------------" << std::endl;
     }
     else if(readBuf(responseLength, response) < responseLength) return false;

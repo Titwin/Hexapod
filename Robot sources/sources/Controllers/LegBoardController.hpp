@@ -11,37 +11,40 @@ class LegBoardController : public TTLbusController
         enum Miscellaneous
         {
         //miscellaneous
-            START_BYTE = 0xFE,
+            START_BYTE = 0xAA,
             BROADCAST_ID = 0xFE,
 
         //instructions
             INST_PING = 0x01,
             INST_READ = 0x02,
             INST_WRITE = 0x03,
-            INST_REG_WRITE = 0x04,
+            INST_SYNC_WRITE = 0x04,
             INST_ACTION = 0x05,
             INST_RESET = 0x06,
-            INST_SYNC_WRITE = 0x83,
+            INST_REPLY = 0x07,
+            INST_AUTOCALIBRATE = 0x08,
 
         //register Address
             REG_STATE = 0,
-            REG_DISTANCE_H = 1,
-            REG_DISTANCE_L = 2,
-            REG_FORCE_H = 3,
-            REG_FORCE_L = 4,
-            REG_SHIELD = 5,
-            REG_RED = 6,
-            REG_GREEN = 7,
-            REG_BLUE = 8,
-            REG_SIZE = 9,
+            REG_SHIELD = 1,
+            REG_RED = 2,
+            REG_GREEN = 3,
+            REG_BLUE = 4,
+            REG_WDR_COUNT = 5,
+
+            REG_DISTANCE_H = 6,       REG_DISTANCE_L = 7,
+            REG_FORCE_H = 8,          REG_FORCE_L = 9,
+            REG_VBATT_H = 10,         REG_VBATT_L = 11,
+            REG_TEMPERATURE_H = 12,   REG_TEMPERATURE_L = 13,
+
+            REG_SIZE = 14,
 
             EEPROM_ID = 0,
             EEPROM_SLAVE_TYPE = 1,
-            EEPROM_VERSION = 2,
-            EEPROM_DISTANCE_THSD_H = 3,
-            EEPROM_DISTANCE_THSD_L = 4,
-            EEPROM_FORCE_THSD_H = 5,
-            EEPROM_FORCE_THSD_L = 6,
+            EEPROM_SOFT_VERSION = 2,
+            EEPROM_DISTANCE_THSD_H = 3,  EEPROM_DISTANCE_THSD_L = 4,
+            EEPROM_FORCE_THSD_H = 5,     EEPROM_FORCE_THSD_L = 6,
+
             EEPROM_SIZE = 7,
 
         //  Status bit-field
@@ -68,6 +71,7 @@ class LegBoardController : public TTLbusController
         bool action(const uint8_t& ID);
         bool reset(const uint8_t& ID);
         bool debug(const uint8_t& ID, uint8_t* response = NULL);
+        bool autocalibrate(const uint8_t& ID);
         inline uint8_t getType(const uint8_t& ID){return getRegister(ID, EEPROM_SLAVE_TYPE, 1);};
         //
 
@@ -75,7 +79,6 @@ class LegBoardController : public TTLbusController
         int setRegister(const uint8_t& ID, const uint8_t& reg, const uint8_t& regSize, const uint8_t* const val);
         int getRegister(const uint8_t& ID, const uint8_t& reg, const uint8_t& regSize);
         bool readMemory(const uint8_t& ID, const uint8_t& reg, const uint8_t& regSize, uint8_t* response);
-        float getFloatRegister(const uint8_t& ID, const uint8_t& reg);
         //
 
     protected:

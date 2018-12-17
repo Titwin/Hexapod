@@ -325,14 +325,14 @@ int Network::synchronizeLegBoard(const bool& verbose)
                     if(verbose)
                     {
                         std::cout << "  slave " << (int)it->first << " distance update" << std::endl;
-                        std::cout << "     type : " << (int)leg->type << std::endl;
+                        /*std::cout << "     type : " << (int)leg->type << std::endl;
                         std::cout << "     state : " << std::hex << (int)leg->state << std::dec << std::endl;
-                        std::cout << "     shield : " << std::hex << (int)leg->shield << std::dec << std::endl;
+                        std::cout << "     shield : " << std::hex << (int)leg->shield << std::dec << std::endl;*/
                         std::cout << "     distance : " << (int)leg->distance << std::endl;
-                        std::cout << "     force : " << (int)leg->force << std::endl;
+                        /*std::cout << "     force : " << (int)leg->force << std::endl;
                         std::cout << "     red : " << (int)leg->red << std::endl;
                         std::cout << "     green : " << (int)leg->green << std::endl;
-                        std::cout << "     blue : " << (int)leg->blue << std::endl;
+                        std::cout << "     blue : " << (int)leg->blue << std::endl;*/
                     }
                 }
                 else
@@ -405,13 +405,13 @@ Network::Node* Network::tryMappingNode(const NodeType& type, const uint8_t& ID, 
             LegBoard* s = new LegBoard();
                 s->type = NODE_LEGBOARD;
                 s->connectionFails = 0;
-                s->state = response[5];
-                s->shield = response[10];
-                s->distance = LEGBOARD.bytes2Int(response[7], response[6]);
-                s->force = LEGBOARD.bytes2Int(response[9], response[8]);
-                s->red = response[11];
-                s->green = response[12];
-                s->blue = response[13];
+                s->state = response[5 + LegBoardController::REG_STATE];
+                s->shield = response[5 + LegBoardController::REG_SHIELD];
+                s->distance = LEGBOARD.bytes2Int(response[5 + LegBoardController::REG_DISTANCE_L], response[5 + LegBoardController::REG_DISTANCE_H]);
+                s->force = LEGBOARD.bytes2Int(response[5 + LegBoardController::REG_FORCE_L], response[5 + LegBoardController::REG_FORCE_H]);
+                s->red = response[5 + LegBoardController::REG_RED];
+                s->green = response[5 + LegBoardController::REG_GREEN];
+                s->blue = response[5 + LegBoardController::REG_BLUE];
                 s->needSync = 0;
 
             if(verbose)
@@ -427,6 +427,11 @@ Network::Node* Network::tryMappingNode(const NodeType& type, const uint8_t& ID, 
                 std::cout << "     blue : " << (int)s->blue << std::endl;
             }
             return s;
+        }
+        else if(verbose)
+        {
+            std::cout << "  legBoard " << (int)ID << " map fail" << std::endl;
+            TTLbusError++;
         }
     }
     else if(verbose && type != NODE_SCS15 && type != NODE_LEGBOARD)

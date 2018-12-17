@@ -15,11 +15,19 @@
 class Analog
 {
 	public:
+		enum Updates
+		{
+			forceUpdate = 0x01,
+			voltageUpdate = 0x02,
+			temperatureUpdate = 0x04
+		};
+
 		void initialize();
 
-		uint16_t getForce() const;
-		uint16_t getVBatt() const;
-		uint16_t getTemperature() const;
+		uint16_t getForce();
+		uint16_t getVBatt();
+		uint16_t getTemperature();
+		uint8_t getUpdates();
 
 		void inline interrupt();
 
@@ -29,6 +37,7 @@ class Analog
 		volatile uint16_t temperature;
 
 		volatile uint8_t state;
+		volatile uint8_t updates;
 };
 
 #endif /* ANALOG_H_ */

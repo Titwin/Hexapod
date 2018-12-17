@@ -57,16 +57,33 @@ bool LegBoardController::reset(const uint8_t& ID)
 
     enableTX(true);
     printHeader(ID, messageLength);
-    send(INST_RESET);
+    send(INST_AUTOCALIBRATE);
     send((~(ID + messageLength + INST_RESET))&0xFF);
     enableTX(false, messageLength);
 
     if(ID != BROADCAST_ID) return readBuf(6);
     return 0;
 }
+bool LegBoardController::autocalibrate(const uint8_t& ID)
+{
+    const uint8_t messageLength = 2;
+
+    enableTX(true);
+    printHeader(ID, messageLength);
+    send(INST_RESET);
+    send((~(ID + messageLength + INST_RESET))&0xFF);
+    enableTX(false, messageLength);
+
+    int t = getTimeout();
+    setTimeout(500);
+    bool error = false;
+    if(ID != BROADCAST_ID) error = (readBuf(6) == 6);
+    setTimeout(t);
+    return error;
+}
 bool LegBoardController::debug(const uint8_t& ID, uint8_t* response)
 {
-    const uint8_t readSize = 16;
+    const uint8_t readSize = REG_SIZE + EEPROM_SIZE;
 
     if(!response)
     {
@@ -75,34 +92,41 @@ bool LegBoardController::debug(const uint8_t& ID, uint8_t* response)
         if(!readMemory(ID, 0, readSize, buf)) return false;
 
         std::cout <<"-------LegBoard print-------" << std::endl;
-        std::cout << "State: 0x" << std::hex << (int)buf[5] << std::dec << std::endl;
-        std::cout << "  EEPROM: " << (buf[5]&(1 << 7)?"lock":"unlock") << std::endl;
-        std::cout << "  Distance sensor: " << (buf[5]&(1 << 6)?"ready":"error") << std::endl;
-        std::cout << "  USB: " << (buf[5]&(1 << 5)?"connected":"disconnected") << std::endl;
-        std::cout << "  Shield contact: " << (buf[5]&(1 << 4)?"yes":"no") << std::endl;
-        std::cout << "  Closed distance: " << (buf[5]&(1 << 3)?"yes":"no") << std::endl;
-        std::cout << "  Touching: " << (buf[5]&(1 << 2)?"yes":"no") << std::endl;
-        std::cout << "  Blink mode: " << (int)(buf[5]&0x03) << std::endl;
+        uint8_t tmp = buf[5 + REG_STATE];
+        std::cout << "State: 0x" << std::hex << (int)tmp << std::dec << std::endl;
+        std::cout << "  EEPROM: " << (tmp&(1 << 7)?"lock":"unlock") << std::endl;
+        std::cout << "  Distance sensor: " << (tmp&(1 << 6)?"ready":"error") << std::endl;
+        std::cout << "  USB: " << (tmp&(1 << 5)?"connected":"disconnected") << std::endl;
+        std::cout << "  Shield contact: " << (tmp&(1 << 4)?"yes":"no") << std::endl;
+        std::cout << "  Proximity alert: " << (tmp&(1 << 3)?"yes":"no") << std::endl;
+        std::cout << "  Touching: " << (tmp&(1 << 2)?"yes":"no") << std::endl;
+        std::cout << "  Blink mode: " << (int)(tmp&0x03) << std::endl;
 
-        std::cout << "Distance: " << bytes2Int(buf[7], buf[6]) << std::endl;
-        std::cout << "Force: " << bytes2Int(buf[9], buf[8]) << std::endl;
-        std::cout << "Shield: 0x" << std::hex << (int)buf[10] << std::dec << std::endl;
-        std::cout << "  A: " << (buf[10]&(1 << 0)?"contact":"0") << std::endl;
-        std::cout << "  B: " << (buf[10]&(1 << 2)?"contact":"0") << std::endl;
-        std::cout << "  C: " << (buf[10]&(1 << 1)?"contact":"0") << std::endl;
-        std::cout << "  D: " << (buf[10]&(1 << 3)?"contact":"0") << std::endl;
-        std::cout << "  center: " << (buf[10]&(1 << 4)?"contact":"0") << std::endl;
+        tmp = buf[5 + REG_SHIELD];
+        std::cout << "Shield: 0x" << std::hex << (int)tmp << std::dec << std::endl;
+        std::cout << "  A: " << (tmp&(1 << 0)?"contact":"0") << std::endl;
+        std::cout << "  B: " << (tmp&(1 << 2)?"contact":"0") << std::endl;
+        std::cout << "  C: " << (tmp&(1 << 1)?"contact":"0") << std::endl;
+        std::cout << "  D: " << (tmp&(1 << 3)?"contact":"0") << std::endl;
+        std::cout << "  center: " << (tmp&(1 << 4)?"contact":"0") << std::endl;
 
         std::cout << "Color :" << std::endl;
-        std::cout << "  red: " << (int)buf[11] << std::endl;
-        std::cout << "  green: " << (int)buf[12] << std::endl;
-        std::cout << "  blue: " << (int)buf[13] << std::endl;
+        std::cout << "  red: " << (int)buf[5 + REG_RED] << std::endl;
+        std::cout << "  green: " << (int)buf[5 + REG_GREEN] << std::endl;
+        std::cout << "  blue: " << (int)buf[5 + REG_BLUE] << std::endl;
 
-        std::cout << "Id: " << (int)buf[14] << std::endl;
-        std::cout << "Slave type: " << (int)buf[15] << std::endl;
-        std::cout << "Firmware version: " << (int)buf[16] << std::endl;
-        std::cout << "Distance threshold: " << bytes2Int(buf[18], buf[17]) << std::endl;
-        std::cout << "Force threshold: " << bytes2Int(buf[20], buf[19]) << std::endl;
+        std::cout << "Deadlocks: " << (int)buf[5 + REG_WDR_COUNT] << std::endl;
+
+        std::cout << "Distance: " << bytes2Int(buf[5 + REG_DISTANCE_L], buf[5 + REG_DISTANCE_H]) << std::endl;
+        std::cout << "   threshold: " << bytes2Int(buf[5 + REG_SIZE + EEPROM_DISTANCE_THSD_L], buf[5 + REG_SIZE + EEPROM_DISTANCE_THSD_H]) << std::endl;
+        std::cout << "Force: " << bytes2Int(buf[5 + REG_FORCE_L], buf[5 + REG_FORCE_H]) << std::endl;
+        std::cout << "   threshold: " << bytes2Int(buf[5 + REG_SIZE + EEPROM_FORCE_THSD_L], buf[5 + REG_SIZE + EEPROM_FORCE_THSD_H]) << std::endl;
+        std::cout << "Voltage: " << bytes2Int(buf[5 + REG_FORCE_L], buf[5 + REG_FORCE_H]) << std::endl;
+        std::cout << "Temperature: " << bytes2Int(buf[5 + REG_FORCE_L], buf[5 + REG_FORCE_H]) << std::endl;
+
+        std::cout << "Id: " << (int)buf[5 + REG_SIZE + EEPROM_ID] << std::endl;
+        std::cout << "Slave type: " << (int)buf[5 + REG_SIZE + EEPROM_SLAVE_TYPE] << std::endl;
+        std::cout << "Firmware version: " << (int)buf[5 + REG_SIZE + EEPROM_SOFT_VERSION] << std::endl;
 
         std::cout << "------------*------------" << std::endl;
         return true;
@@ -180,22 +204,6 @@ bool LegBoardController::readMemory(const uint8_t& ID, const uint8_t& reg, const
 
     if(readBuf(responseLength, response) < responseLength) return false;
     return true;
-}
-float LegBoardController::getFloatRegister(const uint8_t& ID, const uint8_t& reg)
-{
-    const uint8_t messageLength = 4;
-
-    enableTX(true);
-    printHeader(ID, messageLength);
-    send(INST_READ);
-    send(reg);
-    send(4);
-    send((~(ID + messageLength + INST_READ + reg + 4))&0xFF);
-    enableTX(false, messageLength);
-
-    uint8_t buf[10];
-    if(readBuf(10, buf) < 10) return -4.2e12;
-    return bytes2Float(buf[8],buf[7],buf[6],buf[5]);
 }
 //
 

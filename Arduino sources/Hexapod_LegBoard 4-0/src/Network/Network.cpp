@@ -54,11 +54,6 @@ void Network::update()
 {
 	while(available())
 		parseChar(read());
-	/*while(available())
-	{
-		int c = read();
-		if(c >= 0) parseChar(c);
-	}*/
 }
 void Network::resetState()
 {
@@ -78,22 +73,12 @@ void inline Network::printHeader(const uint8_t& id, const uint8_t& msgSize, cons
 }
 uint8_t inline Network::write(uint8_t c)
 {
-	//while(!(UCSR1A & (1<<UDRE1)));
 	UDR1 = c;
 	while(!(UCSR1A & (1<<UDRE1)));
 	return 1;
 }
 uint8_t Network::read()
 {
-	/*if (buffer_head == buffer_tail)
-		return -1;
-	else
-	{
-		uint8_t c = buffer[buffer_tail];
-		buffer_tail = (uint8_t)(buffer_tail + 1) % SERIAL_RX_BUFFER_SIZE;
-		return c;
-	}*/
-
 	uint8_t c = buffer[buffer_tail];
 	buffer_tail = (uint8_t)(buffer_tail + 1) % SERIAL_RX_BUFFER_SIZE;
 	return c;
@@ -168,7 +153,7 @@ void Network::parseChar(const uint8_t& c)
 						if(callbackArray[3]) (*callbackArray[3])(msgLength-2, currentMsg);
 						break;
 				 
-					case NC_INST_REG_WRITE:
+					case NC_INST_SYNC_WRITE:
 						if(callbackArray[4]) (*callbackArray[4])(msgLength-2, currentMsg);
 						if(msgId == id) sendRegister(NC_INST_REPLY, 0, NULL);
 						break;
@@ -205,7 +190,7 @@ bool Network::assignCallback(const uint8_t& instructionType, NetworkCallback cal
 		case NC_INST_ACTION:        callbackArray[1] = callback; break;
 		case NC_INST_READ:          callbackArray[2] = callback; break;
 		case NC_INST_WRITE:         callbackArray[3] = callback; break;
-		case NC_INST_REG_WRITE:     callbackArray[4] = callback; break;
+		case NC_INST_SYNC_WRITE:    callbackArray[4] = callback; break;
 		case NC_INST_RESET:         callbackArray[5] = callback; break;
 		case NC_INST_AUTOCALIBRATE: callbackArray[6] = callback; break;
 		default: return false;
@@ -231,6 +216,7 @@ void Network::sendRegister(const uint8_t& instruction, const uint8_t& regSize, c
 uint32_t Network::getLastTimestamp(){return lastValidCharTimestamp;}
 bool Network::isPersonalId(const uint8_t& Id){return (Id==0xFF ? msgId==id : Id==id);};
 void Network::setId(const uint8_t& newid){id = newid;}
+void Network::clear() { buffer_head = 0; buffer_tail = 0; }
 //
 
 //  ISR vector interrupt

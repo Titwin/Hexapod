@@ -34,8 +34,9 @@
 #define TWI_MRX_DATA_NACK          0x58  // Data byte has been received and NACK transmitted
 
 // TWI Miscellaneous status codes
-#define TWI_NO_STATE               0xF8  // No relevant state information available; TWINT = “0”
-#define TWI_BUS_ERROR              0x00  // Bus error due to an illegal START or STOP condition
+#define TWI_RDY                    0x00  // No relevant state information available; TWINT = “0”
+#define TWI_MTX		               0x01
+#define TWI_MRX		               0x02
 
 
 class TWI
@@ -43,8 +44,10 @@ class TWI
 	public:
 		void initialize();
 
-		bool write(const uint8_t& inst, const uint8_t& id, const uint8_t& msgSize, uint8_t* msg);
-		bool read(const uint8_t& id, const uint8_t& msgSize, uint8_t* msg);
+		uint8_t write(const uint8_t& id, const uint8_t& reg, const uint8_t& msgSize, uint8_t const* msg);
+		uint8_t read(const uint8_t& id, const uint8_t& reg, const uint8_t& msgSize, uint8_t* const msg);
+		uint8_t ping(const uint8_t& id);
+		uint8_t scan(uint8_t& idSize, uint8_t* ids);
 		
 		void interrupt();
 
@@ -53,7 +56,10 @@ class TWI
 		volatile uint8_t buffer[TWI_BUFFER_SIZE];
 
 		volatile uint8_t messageSize;
-		volatile bool validMessage;
+		volatile uint8_t status;
+		volatile uint8_t state;
+
+		void inline wait();
 };
 
 

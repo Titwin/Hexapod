@@ -78,7 +78,7 @@ class Network
         //
 
         /// Set/get functions
-        void nodeBroadcast(const NodeType& type, const NodeAttributes& attribute, const uint16_t& value);
+        void nodeBroadcast(const NodeType& type, const NodeAttributes& attribute, const uint16_t& value = 0);
         void getNodeMap(std::map<NodeType, std::map<uint8_t, Node*> >* destination);
         void setNodeAttributes(const NodeType& type, const NodeAttributes& attribute, const uint8_t& id, const uint16_t& value);
         void setSyncNodeAttributes(const NodeType& type, const NodeAttributes& attribute, const uint8_t& idLength, const uint8_t* const id, const uint16_t* const value);

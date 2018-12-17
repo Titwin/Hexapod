@@ -24,31 +24,36 @@ void Analog::initialize()
 	ADCSRB = 0x06<<ADTS0;				    // FORCE and trigger on TIMER1_OVF
 
 	state = 0;
+	updates = 0;
 	force = 0xFFFF;
 	temperature = 0xFFFF;
 	VBatt = 0xFFFF;
 }
 
-uint16_t Analog::getForce() const { return force; }
-uint16_t Analog::getVBatt() const { return VBatt; }
-uint16_t Analog::getTemperature() const { return temperature; }
+uint16_t Analog::getForce() { updates &= ~(Analog::forceUpdate); return force; }
+uint16_t Analog::getVBatt() { updates &= ~(Analog::voltageUpdate); return VBatt; }
+uint16_t Analog::getTemperature() { updates &= ~(Analog::temperatureUpdate); return temperature; }
+uint8_t Analog::getUpdates() { return updates; }
 
 void inline Analog::interrupt()
 {
-	const uint16_t value = ADCL | (ADCH << 8);
+	const uint16_t value = ADCL | ((uint16_t)ADCH << 8);
 	switch(state)
 	{
 		case 0:
 			force = value;
+			updates |= Analog::forceUpdate;
 			ADMUX = (0x01<<REFS0)|(V_BATT);
+			ADCSRB |= (1<<MUX5);
 			break;
 		case 1:
 			VBatt = value;
+			updates |= Analog::voltageUpdate;
 			ADMUX = (0x03<<REFS0)|(TEMPERATURE);
-			ADCSRB |= (1<<MUX5);
 			break;
 		case 3:
 			temperature = value;
+			updates |= Analog::temperatureUpdate;
 			ADMUX = (0x01<<REFS0)|(FORCE);
 			ADCSRB &= ~(1<<MUX5);
 			break;

@@ -17,13 +17,13 @@
 #define SERIAL_RX_BUFFER_SIZE	128
 
 #define NC_BROADCAST_ID			0xFE
-#define NC_START_BYTE			0xFE
+#define NC_START_BYTE			0xAA
 
 #define NC_INST_PING            0x01
 #define NC_INST_ACTION          0x05
 #define NC_INST_READ            0x02
 #define NC_INST_WRITE           0x03
-#define NC_INST_REG_WRITE       0x04
+#define NC_INST_SYNC_WRITE      0x04
 #define NC_INST_RESET           0x06
 #define NC_INST_REPLY           0x07
 #define NC_INST_AUTOCALIBRATE   0x08
@@ -52,6 +52,7 @@ class Network
 		uint32_t getLastTimestamp();
 		bool isPersonalId(const uint8_t& Id = 0xFF);
 		void setId(const uint8_t& newid);
+		void clear();
 		//
 
 		//  ISR vector interrupt

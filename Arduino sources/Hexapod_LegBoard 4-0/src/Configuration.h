@@ -10,7 +10,6 @@
 #define CONFIGURATION_H_
 
 /*
-//  Pinout
 #define LED_Red   11 // PB7 OC1C
 #define LED_Green 10 // PB6 OC1B
 #define LED_Blue  9  // PB5 OC1A
@@ -24,10 +23,10 @@
 #define SHIELD_E A5 // center PF0
 */
 
-
+//  Pinout
 #define FORCE			0x07	// ADC7
-#define V_BATT			0x08	// ADC8
-#define TEMPERATURE		0x07	// 0x07 on ADMUX + 1 on MUX5
+#define V_BATT			0x00	// 0x00 on ADMUX & 1 on MUX5
+#define TEMPERATURE		0x07	// 0x07 on ADMUX & 1 on MUX5
 
 
 //  Status byte bitfield
@@ -45,34 +44,37 @@
 
 //  Register mapping
 #define REG_STATE				0
-#define REG_DISTANCE_H			1
-#define REG_DISTANCE_L			2
-#define REG_FORCE_H				3
-#define REG_FORCE_L				4
-#define REG_SHIELD				5
-#define REG_LED_RED				6
-#define REG_LED_GREEN			7
-#define REG_LED_BLUE			8
-#define REG_VBATT_H				9
-#define REG_VBATT_L				10
-#define REG_TEMPERATURE_H		11
-#define REG_TEMPERATURE_L		12
-#define REG_SIZE				13
+#define REG_SHIELD				1
+#define REG_LED_RED				2
+#define REG_LED_GREEN			3
+#define REG_LED_BLUE			4
+#define REG_WDR_COUNT			5
 
-#define EEPROM_ID               0
-#define EEPROM_SLAVE_TYPE       1
-#define EEPROM_SOFT_VERSION     2
-#define EEPROM_DISTANCE_THSD_H  3
-#define EEPROM_DISTANCE_THSD_L  4
-#define EEPROM_FORCE_THSD_H     5
-#define EEPROM_FORCE_THSD_L     6
-#define EEPROM_FORCE_OFFSET_H   7
-#define EEPROM_FORCE_OFFSET_L   8
-#define EEPROM_SIZE             9
+#define REG_DISTANCE_H			6
+#define REG_DISTANCE_L			7
+#define REG_FORCE_H				8
+#define REG_FORCE_L				9
+#define REG_VBATT_H				10
+#define REG_VBATT_L				11
+#define REG_TEMPERATURE_H		12
+#define REG_TEMPERATURE_L		13
+
+#define REG_SIZE				14
+
+
+#define EEPROM_ID					0
+#define EEPROM_SLAVE_TYPE			1
+#define EEPROM_SOFT_VERSION			2
+
+#define EEPROM_DISTANCE_THSD_H		3
+#define EEPROM_DISTANCE_THSD_L		4
+#define EEPROM_FORCE_THSD_H			5
+#define EEPROM_FORCE_THSD_L			6
+
+#define EEPROM_SIZE					7
 
 
 //	Board type
 #define LEGBOARD 0x01
-
 
 #endif /* CONFIGURATION_H_ */
