@@ -121,8 +121,8 @@ bool LegBoardController::debug(const uint8_t& ID, uint8_t* response)
         std::cout << "   threshold: " << bytes2Int(buf[5 + REG_SIZE + EEPROM_DISTANCE_THSD_L], buf[5 + REG_SIZE + EEPROM_DISTANCE_THSD_H]) << std::endl;
         std::cout << "Force: " << bytes2Int(buf[5 + REG_FORCE_L], buf[5 + REG_FORCE_H]) << std::endl;
         std::cout << "   threshold: " << bytes2Int(buf[5 + REG_SIZE + EEPROM_FORCE_THSD_L], buf[5 + REG_SIZE + EEPROM_FORCE_THSD_H]) << std::endl;
-        std::cout << "Voltage: " << bytes2Int(buf[5 + REG_FORCE_L], buf[5 + REG_FORCE_H]) << std::endl;
-        std::cout << "Temperature: " << bytes2Int(buf[5 + REG_FORCE_L], buf[5 + REG_FORCE_H]) << std::endl;
+        std::cout << "Voltage: " << bytes2Int(buf[5 + REG_VBATT_L], buf[5 + REG_VBATT_H]) << std::endl;
+        std::cout << "Temperature: " << bytes2Int(buf[5 + REG_TEMPERATURE_L], buf[5 + REG_TEMPERATURE_H]) << std::endl;
 
         std::cout << "Id: " << (int)buf[5 + REG_SIZE + EEPROM_ID] << std::endl;
         std::cout << "Slave type: " << (int)buf[5 + REG_SIZE + EEPROM_SLAVE_TYPE] << std::endl;
@@ -182,7 +182,7 @@ int LegBoardController::getRegister(const uint8_t& ID, const uint8_t& reg, const
     uint8_t buf[responseLength];
     if(readBuf(responseLength, buf) < responseLength) return -1;
 
-    if(regSize == 2) return bytes2Int(buf[6], buf[5]);
+    if(regSize == 2) return bytes2Int(buf[5], buf[6]);
     else if(regSize == 1) return buf[5];
     else return -2;
 }

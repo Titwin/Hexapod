@@ -12,8 +12,15 @@
 #include "GamePad.hpp"
 #include "Hexapod.hpp"
 #include "bcm2835.h"
+#include "Socket/UDP.hpp"
+#include "Socket/Serializer.hpp"
+#include "Localization/Localization.hpp"
+
+#define UDP_SEND_PORT "5014"
+#define UDP_HOSTNAME "Thibault-SED-PC.local"
 
 #define FRAME_TIME 20 //in ms
+#define UDP_SCAN_FRAME 50
 
 
 /// prototypes
@@ -55,6 +62,12 @@ int main()
     GamePad gamepad;
     openSerialPort("/dev/ttyAMA0");
     Hexapod robot("Arane 2.0");
+    Localization LocalizationSystem("totems.txt");
+    UDPsocket UDPcomputer(5013);
+    UDPsocket UDPvision(5016);
+
+    std::string computerIP;
+    UDPcomputer.getIpFromHostname(UDP_HOSTNAME, &computerIP);
     NET = new Network();
     std::map<Network::NodeType, std::map<uint8_t, Network::Node*> > nodeMap;
 
@@ -62,7 +75,7 @@ int main()
     pthread_create(&TTLThread, NULL, &TTLThreadMain, NULL);
     setCPUAffinity(TTLThread, 1, "TTLThreadMain");
 
-    /// Wait to mapping finished
+    /// Wait for mapping to finished
     while(!finishProgram)
     {
         auto loopingTime = std::chrono::high_resolution_clock::now();
@@ -81,6 +94,8 @@ int main()
         gamepad.update();
 
         while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < 500);
+
+        break;
     }
 
 
@@ -89,7 +104,7 @@ int main()
     NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, 0);
     NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_SPEED, FRAME_TIME);
     NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1023);
-    //NET->configuration = Network::CONFIG_ACCURATE_DISTANCE;
+    NET->configuration = Network::CONFIG_ACCURATE_DISTANCE;
 
     std::cout<<"---------------------"<<std::endl;
     std::cout<<"Start looping"<<std::endl;
@@ -98,6 +113,7 @@ int main()
 
     while(!finishProgram)
     {
+        /// begin
         loopingTime = std::chrono::high_resolution_clock::now();
 
         if(loopCount < 5)
@@ -108,7 +124,7 @@ int main()
         if((loopCount%100) == 0)
             NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_ACTION);
 
-        /// update/synchronize depending on scs15 nodes
+        /// update / synchronize of scs15 nodes
         NET->getNodeMap(&nodeMap);
         bool complete = true;
         uint16_t pos[18];
@@ -128,31 +144,25 @@ int main()
         }
         if(complete)
             robot.setMotorAngles((uint8_t*)pos);
-        else std::cout<<"missing data for good robot update  " <<nodeMap[Network::NODE_SCS15].size()<<"/24"<<std::endl;
+        //else std::cout<<"missing data for good robot update  " <<nodeMap[Network::NODE_SCS15].size()<<"/18"<<std::endl;
         NET->setSyncNodeAttributes(Network::NODE_SCS15, Network::SCS15_TARGET_POSITION, 18, robot.getMotorsIds(), robot.getGoalMotorAngles());
 
-        /// Distance sensors
-        if((loopCount%25) == 0)
+        /// update / synchronize of legboard nodes
+        if((loopCount%UDP_SCAN_FRAME) == 1)
         {
-            std::pair<MyVector3f, MyVector3f> sensorConfig[6];
-            robot.getSensorsConfiguration(sensorConfig);
-            for(int i=0; i<6; i++)
+            if(!computerIP.empty())
             {
-                short d = -1;
-                if(nodeMap[Network::NODE_LEGBOARD].find(i +2) != nodeMap[Network::NODE_LEGBOARD].end())
-                {
-                    Network::LegBoard* const lb = static_cast<Network::LegBoard*>(nodeMap[Network::NODE_LEGBOARD][i+2]);
-                    d = std::min(lb->distance, (uint16_t)2000);
-                }
-
-                std::cout<<"sensor "<<i<<std::endl;
-                std::cout<<"  position : " <<sensorConfig[i].first<<std::endl;
-                std::cout<<"  direction : " <<sensorConfig[i].second<<std::endl;
-                std::cout<<"  distance : " <<d<<std::endl;
+                NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_RED, 100);
+                NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_GREEN, 100);
+                NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_BLUE, 100);
             }
-            std::cout<<std::endl;
+            else
+            {
+                NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_RED, 100);
+                NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_GREEN, 0);
+                NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_BLUE, 0);
+            }
         }
-
 
         /// update depending to gamepad
         gamepad.update();
@@ -171,19 +181,66 @@ int main()
         MyVector3f rotate(-gamepad.getExpAxis(GamePad::AXIS_2X), 0, 0);
         robot.animate(FRAME_TIME, 0.3f*translate, 0.01f*rotate);
 
+        /// send informations
+        if((loopCount%UDP_SCAN_FRAME) == 0)
+            UDPcomputer.getIpFromHostname(UDP_HOSTNAME, &computerIP, (computerIP.empty() ? -1 : 1));
+        if(!computerIP.empty())
+        {
+            std::string s = Serializer::serialize(robot.getCorrectedTranslationSpeed(), "velocity");
+            s = Serializer::serialize(robot.getCorrectedRotationSpeed(), s + ";angular");
+            UDPcomputer.sendMessageTo(Serializer::SYSTEM, (const uint8_t*)s.c_str(), s.size(), computerIP.c_str(), UDP_SEND_PORT);
+
+            if(!nodeMap.empty() && !nodeMap[Network::NODE_SCS15].empty())
+            {
+                s = Serializer::serialize(&nodeMap[Network::NODE_SCS15], true);
+                UDPcomputer.sendMessageTo(Serializer::MOTORS, (const uint8_t*)s.c_str(), s.size(), computerIP.c_str(), UDP_SEND_PORT);
+            }
+            if(!nodeMap.empty() && !nodeMap[Network::NODE_LEGBOARD].empty())
+            {
+                s = Serializer::serialize(&nodeMap[Network::NODE_LEGBOARD], true);
+                UDPcomputer.sendMessageTo(Serializer::SLAVES, (const uint8_t*)s.c_str(), s.size(), computerIP.c_str(), UDP_SEND_PORT);
+            }
+        }
+
+        /// parse received informations
+        std::string computerMsg = UDPcomputer.read();
+        if(!computerMsg.empty())
+        {
+            std::cout << Utils::SUCCESS << " : from UDPcomputer" << std::endl;
+            std::cout << computerMsg << std::endl;
+        }
+        LocalizationSystem.update(UDPvision.read());
+
+
         /// end
         loopCount++;
+        UDPcomputer.incrementTimestamp();
+        UDPvision.incrementTimestamp();
         //std::cout << "Main : " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() << "ms" <<std::endl;
         while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < FRAME_TIME);
     }
 
     std::cout<<"---------------------"<<std::endl;
-    std::cout<<"End of program. Farewell my friend !"<<std::endl;
+    for(int i=0; i<5; i++)
+    {
+        loopingTime = std::chrono::high_resolution_clock::now();
+
+        NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, 0);
+        NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_RED, 100);
+        NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_GREEN, 0);
+        NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_BLUE, 0);
+
+        NET->synchonize(false);
+
+        loopCount++;
+        while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < FRAME_TIME);
+    }
 
     pthread_join(TTLThread, NULL);
     closeSerialPort();
     bcm2835_close();
 
+    std::cout<<"End of program. Farewell my friend !"<<std::endl;
     return 0;
 }
 //

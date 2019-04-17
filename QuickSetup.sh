@@ -43,7 +43,6 @@ sudo systemctl stop hostapd
 printStepHeader "Change dhcpcd configuration"
 sudo mv /etc/dhcpcd.conf /etc/dhcpcd.conf.orig
 sudo cp OSConfig/dhcpcd.conf /etc/dhcpcd.conf
-sudo service dhcpcd restart
 sudo systemctl daemon-reload
 sudo service dhcpcd restart
 
@@ -63,6 +62,7 @@ sudo cp OSConfig/hostapd /etc/default/hostapd
 
 # restarting services
 printStepHeader "Restarting services"
+sudo systemctl unmask hostapd.service
 sudo systemctl start hostapd
 sudo systemctl start dnsmasq
 
@@ -73,7 +73,8 @@ sudo cp OSConfig/sysctl.conf /etc/sysctl.conf
 sudo iptables -t nat -A  POSTROUTING -o eth0 -j MASQUERADE
 sudo sh -c "iptables-save > /etc/iptables.ipv4.nat"
 
-
+# add route via Thibault-SED-PC (aka 192.168.4.2)
+sudo ip route add default via 192.168.4.2
 
 
 # Finished !!

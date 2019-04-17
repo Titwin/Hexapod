@@ -22,7 +22,8 @@ int TTLbusController::getTimeout() const { return timeout; }
 float TTLbusController::bytes2Float(const uint8_t& b0, const uint8_t& b1, const uint8_t& b2, const uint8_t& b3) const
 {
     uint8_t ptr[4] = { b0, b1, b2, b3 };
-    return *(float *)&ptr;
+    float* fptr = (float *)ptr;
+    return *fptr;
 }
 int TTLbusController::bytes2Int(const uint8_t& b0, const uint8_t& b1) const
 {

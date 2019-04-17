@@ -288,13 +288,13 @@ int Network::synchronizeLegBoard(const bool& verbose)
             uint8_t mask = (1<<LegBoardController::SHIELD_CONTACT)|(1<<LegBoardController::DISTANCE_THSD)|(1<<LegBoardController::FORCE_THSD);
             if((state&mask) != ((leg->state)&mask))
             {
-                uint8_t response[11];
-                if(LEGBOARD.readMemory(it->first, LegBoardController::REG_DISTANCE_H, 5, response))
+                uint8_t response[15];
+                if(LEGBOARD.readMemory(it->first, LegBoardController::REG_SHIELD, 9, response))
                 {
                     //  update LegBoard node infos
-                    leg->shield = response[9];
-                    leg->distance = LEGBOARD.bytes2Int(response[6], response[5]);
-                    leg->force = LEGBOARD.bytes2Int(response[8], response[7]);
+                    leg->shield = response[5];
+                    leg->distance = LEGBOARD.bytes2Int(response[10], response[11]);
+                    leg->force = LEGBOARD.bytes2Int(response[12], response[13]);
 
                     if(verbose)
                     {
@@ -325,14 +325,7 @@ int Network::synchronizeLegBoard(const bool& verbose)
                     if(verbose)
                     {
                         std::cout << "  slave " << (int)it->first << " distance update" << std::endl;
-                        /*std::cout << "     type : " << (int)leg->type << std::endl;
-                        std::cout << "     state : " << std::hex << (int)leg->state << std::dec << std::endl;
-                        std::cout << "     shield : " << std::hex << (int)leg->shield << std::dec << std::endl;*/
                         std::cout << "     distance : " << (int)leg->distance << std::endl;
-                        /*std::cout << "     force : " << (int)leg->force << std::endl;
-                        std::cout << "     red : " << (int)leg->red << std::endl;
-                        std::cout << "     green : " << (int)leg->green << std::endl;
-                        std::cout << "     blue : " << (int)leg->blue << std::endl;*/
                     }
                 }
                 else
@@ -407,8 +400,8 @@ Network::Node* Network::tryMappingNode(const NodeType& type, const uint8_t& ID, 
                 s->connectionFails = 0;
                 s->state = response[5 + LegBoardController::REG_STATE];
                 s->shield = response[5 + LegBoardController::REG_SHIELD];
-                s->distance = LEGBOARD.bytes2Int(response[5 + LegBoardController::REG_DISTANCE_L], response[5 + LegBoardController::REG_DISTANCE_H]);
-                s->force = LEGBOARD.bytes2Int(response[5 + LegBoardController::REG_FORCE_L], response[5 + LegBoardController::REG_FORCE_H]);
+                s->distance = LEGBOARD.bytes2Int(response[5 + LegBoardController::REG_DISTANCE_H], response[5 + LegBoardController::REG_DISTANCE_L]);
+                s->force = LEGBOARD.bytes2Int(response[5 + LegBoardController::REG_FORCE_H], response[5 + LegBoardController::REG_FORCE_L]);
                 s->red = response[5 + LegBoardController::REG_RED];
                 s->green = response[5 + LegBoardController::REG_GREEN];
                 s->blue = response[5 + LegBoardController::REG_BLUE];

@@ -32,7 +32,7 @@ class TTLbusController
 
     protected:
         /// Protected functions
-        inline void send(const uint8_t& byte) const { write(tty_fd, &byte, 1); }
+        inline void send(const uint8_t& byte) const { (write(tty_fd, &byte, 1)+1); } // discard returned value
         int readBuf(const uint8_t& len, uint8_t *buffer = NULL) const;
         void enableTX(const bool& enable, unsigned int msgLength = 0);
         //

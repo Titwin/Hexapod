@@ -27,11 +27,11 @@ Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
 
         motorAnglesOffset[1][0] = -24; sens[1][0] = -1;
         motorAnglesOffset[1][1] = -31; sens[1][1] =  1;
-        motorAnglesOffset[1][2] =  8;  sens[1][2] = -1;
+        motorAnglesOffset[1][2] =  30;  sens[1][2] = -1;
 
         motorAnglesOffset[2][0] = -55; sens[2][0] = -1;
         motorAnglesOffset[2][1] = -17; sens[2][1] = -1;
-        motorAnglesOffset[2][2] = -5;  sens[2][2] = -1;
+        motorAnglesOffset[2][2] = -5;  sens[2][2] = -1; // -5
 
         motorAnglesOffset[3][0] = 0;   sens[3][0] = -1;
         motorAnglesOffset[3][1] = 0;   sens[3][1] =  1;
@@ -168,6 +168,8 @@ void Hexapod::animate(float elapseTime, MyVector3f translationSpeed, MyVector3f 
     {
         case INIT:
             animateGotoStart(elapseTime);
+            correctedTranslationSpeed = MyVector3f(0, 0, 0);
+            correctedRotationSpeed = MyVector3f(0, 0, 0);
             lastMoveTime = -1;
             break;
         case WALK:
@@ -176,9 +178,15 @@ void Hexapod::animate(float elapseTime, MyVector3f translationSpeed, MyVector3f 
             break;
         case TRANSITION:
             animateTransition(elapseTime);
+            correctedTranslationSpeed = MyVector3f(0, 0, 0);
+            correctedRotationSpeed = MyVector3f(0, 0, 0);
             lastMoveTime = -1;
             break;
-        default: robotState = STOP; break;
+        default:
+            robotState = STOP;
+            correctedTranslationSpeed = MyVector3f(0, 0, 0);
+            correctedRotationSpeed = MyVector3f(0, 0, 0);
+            break;
     }
 }
 
@@ -198,7 +206,7 @@ void Hexapod::animateWalk(float elapseTime, MyVector3f translationSpeed, MyVecto
     }
     else lastMoveTime = 0.f;
 
-    //  Prepare parameters for use
+    //  correct speed parameters && height
     if(elapseTime>16) elapseTime = 16;
 
     if(robotHeight > -1 && translationSpeed.z < 0) translationSpeed.z = 0;
@@ -223,14 +231,10 @@ void Hexapod::animateWalk(float elapseTime, MyVector3f translationSpeed, MyVecto
         translationSpeed *= 0.3f/magnitude;
         rotationSpeed *= 0.3f/magnitude;
     }
+    correctedTranslationSpeed = translationSpeed;
+    correctedRotationSpeed = rotationSpeed;
 
-
-    /*if(translationSpeed.length() != 0 && rotationSpeed.length() != 0)
-    {
-        translationSpeed *= 0.5f;
-        rotationSpeed *= 0.5f;
-    }*/
-
+    // prepare swap parameters
     bool swap = false;
     if(limitForSwap<0.1)
     {
@@ -665,11 +669,11 @@ void Hexapod::initiateLegDomainCenter(float radius,float angle,float zeroHeight)
     angle *= M_PI/180.f;
 
     legDomainCenter[0] = MyVector3f( radius*cos(angle), radius*sin(angle), zeroHeight);
-    legDomainCenter[1] = MyVector3f( radius, 0, zeroHeight);
+    legDomainCenter[1] = MyVector3f( radius - 1.f, 0, zeroHeight);
     legDomainCenter[2] = MyVector3f( radius*cos(angle),-radius*sin(angle), zeroHeight);
 
     legDomainCenter[3] = MyVector3f(-radius*cos(angle), radius*sin(angle), zeroHeight);
-    legDomainCenter[4] = MyVector3f(-radius, 0, zeroHeight);
+    legDomainCenter[4] = MyVector3f(-radius + 1.f, 0, zeroHeight);
     legDomainCenter[5] = MyVector3f(-radius*cos(angle),-radius*sin(angle), zeroHeight);
 }
 

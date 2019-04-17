@@ -55,7 +55,8 @@ class Hexapod
         void toogleTorque();
 
         bool legsInPosition();
-        bool obstructed(int sharpIndex){return frontDistance[sharpIndex]<20;};
+        MyVector3f getCorrectedTranslationSpeed() const { return correctedTranslationSpeed; };
+        MyVector3f getCorrectedRotationSpeed() const { return correctedRotationSpeed; };
 
         int debug(){return legTrajectory[0].size();};
 
@@ -93,6 +94,8 @@ class Hexapod
         //  limit speed and walk parameter
             float maxTranslationSpeedMagnitude;
             float maxRotationSpeedMagnitude;
+            MyVector3f correctedTranslationSpeed;
+            MyVector3f correctedRotationSpeed;
             float speedGain;
             float stepLength,stepHeight,robotHeight;
             float gainP;
@@ -115,7 +118,7 @@ class Hexapod
             int8_t robotState,robotGait,robotTargetGait,transitState;
             uint8_t swingGroup,nbGroup;
             float limitForSwap,initialLimitForSwap;
-            int frontDistance[3];
+            //int frontDistance[3];
 
         //  angles parameters
             int16_t motorAnglesOffset[6][3];

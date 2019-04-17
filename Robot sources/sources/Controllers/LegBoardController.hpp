@@ -32,18 +32,18 @@ class LegBoardController : public TTLbusController
             REG_BLUE = 4,
             REG_WDR_COUNT = 5,
 
-            REG_DISTANCE_H = 6,       REG_DISTANCE_L = 7,
-            REG_FORCE_H = 8,          REG_FORCE_L = 9,
-            REG_VBATT_H = 10,         REG_VBATT_L = 11,
-            REG_TEMPERATURE_H = 12,   REG_TEMPERATURE_L = 13,
+            REG_DISTANCE_H = 7,       REG_DISTANCE_L = 6,
+            REG_FORCE_H = 9,          REG_FORCE_L = 8,
+            REG_VBATT_H = 11,         REG_VBATT_L = 10,
+            REG_TEMPERATURE_H = 13,   REG_TEMPERATURE_L = 12,
 
             REG_SIZE = 14,
 
             EEPROM_ID = 0,
             EEPROM_SLAVE_TYPE = 1,
             EEPROM_SOFT_VERSION = 2,
-            EEPROM_DISTANCE_THSD_H = 3,  EEPROM_DISTANCE_THSD_L = 4,
-            EEPROM_FORCE_THSD_H = 5,     EEPROM_FORCE_THSD_L = 6,
+            EEPROM_DISTANCE_THSD_H = 4,  EEPROM_DISTANCE_THSD_L = 3,
+            EEPROM_FORCE_THSD_H = 6,     EEPROM_FORCE_THSD_L = 5,
 
             EEPROM_SIZE = 7,
 
@@ -99,8 +99,8 @@ class LegBoardController : public TTLbusController
         inline int setBlinkMode(const uint8_t& ID, uint8_t mode) { mode = (mode&0x03)|(1<<EEPROM_LOCK); return setRegister(ID, REG_STATE, 1, &mode); };
 
         inline int getState(const uint8_t& ID) { return getRegister(ID, REG_STATE, 1); };
-        inline int getDistance(const uint8_t& ID) { return getRegister(ID, REG_DISTANCE_H, 2); };
-        inline int getForce(const uint8_t& ID) { return getRegister(ID, REG_FORCE_H, 2); };
+        inline int getDistance(const uint8_t& ID) { return getRegister(ID, REG_DISTANCE_L, 2); };
+        inline int getForce(const uint8_t& ID) { return getRegister(ID, REG_FORCE_L, 2); };
         inline int getShield(const uint8_t& ID) { return getRegister(ID, REG_SHIELD, 1); };
         uint32_t getColor(const uint8_t& ID);
         //
