@@ -27,6 +27,10 @@ std::string Serializer::serialize(const MyVector3f& v, std::string input)
 {
     return input + "{\"x\":" + std::to_string(v.x) + ",\"y\":" + std::to_string(v.y) + ",\"z\":" + std::to_string(v.z) + "}";
 }
+std::string Serializer::serialize(const MyVector4f& v, std::string input)
+{
+    return input + "{\"x\":" + std::to_string(v.x) + ",\"y\":" + std::to_string(v.y) + ",\"z\":" + std::to_string(v.z) + ",\"w\":" + std::to_string(v.w) + "}";
+}
 //
 
 /// Protected functions

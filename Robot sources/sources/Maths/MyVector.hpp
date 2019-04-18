@@ -59,6 +59,7 @@ class MyVector3
 
             //{ Special functions ( * ^ bool() << = length() normalize())
                 T length()const{return sqrt(x*x+y*y+z*z);};
+                T square()const{return x*x+y*y+z*z;};
                 const MyVector3& normalize()
                 {
                     T l = sqrt(x*x+y*y+z*z);
@@ -154,6 +155,7 @@ class MyVector2
 
             //{ Special functions ( * bool() << = length() normalize())
                 T length()const{return sqrt(x*x+y*y);};
+                T square()const{return x*x+y*y;};
                 const MyVector2& normalise()
                 {
                     T l = sqrt(x*x+y*y);
@@ -245,6 +247,7 @@ class MyVector4
 
             //{ Special functions ( * ^ bool() << = length() normalize())
                 T length()const{return sqrt(x*x + y*y + z*z + w*w);};
+                T square()const{return x*x+y*y+z*z+w*w;};
                 const MyVector4& normalize()
                 {
                     T l = sqrt(x*x + y*y + z*z + w*w);

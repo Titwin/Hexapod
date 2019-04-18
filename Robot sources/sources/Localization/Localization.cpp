@@ -6,6 +6,7 @@
 #include <iterator>
 
 #include "Utils/Utils.hpp"
+#include "Maths/MathConversion.hpp"
 
 //Default
 Localization::Localization(const std::string& totemFileName): visionConfidence(0.f), odometryConfidence(0.f)
@@ -32,15 +33,10 @@ Localization::Localization(const std::string& totemFileName): visionConfidence(0
             totem.id = totemId;
             totemList.push_back(totem);
         }
-        else if(s.find("s ") != std::string::npos)
-        {
-            std::pair<uint8_t, MyMatrix4f> p = parseScale(s);
-            totemList.back().markerList[p.first] = totemList.back().markerList[p.first] * p.second;
-        }
         else if(s.size() > 10)
         {
-            std::pair<uint8_t, MyMatrix4f> p = parse(s);
-            totemList.back().markerList[p.first] = p.second;
+            std::pair<uint8_t, SmallTransform> p = parse(s);
+            totemList.back().markerList[p.first] = p.second.getTransform();;
         }
     }
     myfile.close();
@@ -50,56 +46,130 @@ Localization::~Localization()
 //
 
 //  Public functions
-void Localization::update(std::string visionResult)
+void Localization::update(std::string visionResult, const float& elapsedTime, const MyVector3f& robotTranslationSpeed, const MyVector3f& robotRotationSpeed)
 {
+    //{ odomery integration
+        MyMatrix4f M = MyMatrix4f::translation(elapsedTime * robotTranslationSpeed) *
+                       MyMatrix4f::rotation(elapsedTime * robotRotationSpeed.x, MyVector3f(1,0,0)) *
+                       MyMatrix4f::rotation(elapsedTime * robotRotationSpeed.y, MyVector3f(0,1,0)) *
+                       MyMatrix4f::rotation(elapsedTime * robotRotationSpeed.z, MyVector3f(0,0,1));
+
+        odometryTransform = odometryTransform * M;
+        odometryConfidence += elapsedTime * robotTranslationSpeed.length();
+    //}
+
+    //  clear per frame data
     seenMarkers.clear();
+    positionCloud.clear();
+    orphanMarkers.clear();
 
     //  parse vision module result
     if(!visionResult.empty())
     {
-        //  parse vision module result
+        ///  parse vision module result
         std::istringstream iss(visionResult);
         std::string s;
         while(std::getline(iss, s, '\n'))
         {
-            std::pair<uint8_t, MyMatrix4f> p = parse(s);
+            std::pair<uint8_t, SmallTransform> p = parse(s);
             seenMarkers[p.first] = p.second;
         }
 
-        //  compute each camera position
-        for(std::map<uint8_t, MyMatrix4f>::iterator it=seenMarkers.begin(); it!=seenMarkers.end(); it++)
+        ///  compute each camera position
+        for(std::map<uint8_t, SmallTransform>::iterator it=seenMarkers.begin(); it!=seenMarkers.end(); it++)
         {
             std::pair<int, MyMatrix4f> p = getTotemAndMarkerTransform(it->first);
             if(p.first >= 0)
             {
                 try
                 {
-                    MyMatrix4f worldToTotem = totemList[p.first].transform;
-                    MyMatrix4f totemToMarker = p.second;
-                    MyMatrix4f markerToCamera = it->second.inverse();
+                    std::pair<float, MyMatrix4f> recontructedPoint;
 
-                    MyMatrix4f M = it->second;
-                    //MyMatrix4f M = worldToTotem * totemToMarker * markerToCamera;
+                    MyMatrix4f w2m = totemList[p.first].transform *         //  world to totem
+                                     p.second;                              //  totem to marker
+                    MyMatrix4f m2c = it->second.getTransform().inverse();   //  marker to camera
+                    MyVector3f z1 = w2m.getZ().normalize();                 //  marker z vector direction (in world space)
+                    MyVector3f z2 = robotTransform.getZ().normalize();      //  camera z vector direction (in marker space)
 
-                    std::cout<<(int)it->first<<std::endl<<M<<std::endl;
+                    float w = std::abs(z1*z2);
+                    constexpr float thresholdAngle(30.f);
+                    constexpr float threshold1(cos(3.14159265/2 - thresholdAngle * 3.14159265 / 180.));
+                    constexpr float threshold2(cos(thresholdAngle * 3.14159265 / 180.));
+
+                    if(w < threshold1)
+                        recontructedPoint.first = MathConversion::remap(w, 0.f, threshold1, 0.f, 1.f);
+                    else if(w > threshold2)
+                        recontructedPoint.first = MathConversion::remap(w, threshold2, 1.f, 1.f, 0.3f);
+                    else
+                        recontructedPoint.first = 1.f;
+                    recontructedPoint.second = w2m * m2c;                   //  world to camera
+
+                    positionCloud[p.first].push_back(recontructedPoint);
                 }
                 catch(const std::exception& e)
                 {
-                    std::cout<<Utils::WARNING<<" Localization : non invertible marker matrix : "<<(int)it->first;
+                    std::cout<<Utils::WARNING<<" Localization : non invertible marker matrix : "<<(int)it->first<<'\n'<<e.what();
                 }
             }
             else
             {
-                std::cout<<"lone marker found : "<<(int)it->first<<std::endl;
+                orphanMarkers[it->first] = it->second.getTransform();
             }
         }
+
+        /// compute cloud centroid and error estimation
+        for(auto it=positionCloud.begin(); it!=positionCloud.end(); it++)
+        {
+            MyMatrix4f centroidTransform = MyMatrix4f::zero();
+            float totalWeight = 0.0f;
+
+            for(unsigned int i=0; i<it->second.size(); i++)
+            {
+                float w = it->second[i].first;
+                MyMatrix4f M = it->second[i].second;
+
+                centroidTransform += w*M;
+                totalWeight += w;
+            }
+
+            centroidTransform /= totalWeight;
+            MyVector3f centroidPosition = centroidTransform.getOrigin();
+            float variance = 0.0f;
+
+            for(unsigned int i=0; i<it->second.size(); i++)
+                variance += (centroidPosition  - it->second[i].second.getOrigin()).square();
+            float standardDeviation = std::sqrt(variance) / it->second.size();
+            centroids[it->first] = std::pair<float, MyMatrix4f>(standardDeviation, centroidTransform);
+
+            //std::cout<<standardDeviation<<std::endl<<centroidTransform<<std::endl;
+        }
+
+        /// compute centroids weighted average
+        visionConfidence = 0.f;
+        MyMatrix4f M = MyMatrix4f::zero();
+        for(auto it=centroids.begin(); it!=centroids.end(); it++)
+        {
+            M += it->second.second;
+            visionConfidence += it->second.first;
+        }
+        M /= centroids.size();
+        visionConfidence /= centroids.size();
+
+        for(auto it = orphanMarkers.begin(); it!=orphanMarkers.end(); it++)
+            it->second = M * it->second;
+        visionTransform = M * cameraToRobotTranfsorm;
+
+        robotTransform = visionTransform;
+        odometryTransform = visionTransform;
+        odometryConfidence = visionConfidence;
     }
+    else robotTransform = odometryTransform;
 }
 
 
-MyVector3f Localization::getRobotPosition() const
+MyMatrix4f Localization::getRobotTransform() const
 {
-    return MyVector3f(visionTransform.a[0][3], visionTransform.a[1][3], visionTransform.a[2][3]);
+    return robotTransform;
 }
 bool Localization::setTotemTransform(const uint8_t& id, const MyVector3f& p, const MyQuaternionf& q)
 {
@@ -107,42 +177,40 @@ bool Localization::setTotemTransform(const uint8_t& id, const MyVector3f& p, con
     {
         if(totemList[i].id == id)
         {
-            totemList[i].transform = MyMatrix4f::translation(p) * q.toMatrix4();
+            totemList[i].transform = MyMatrix4f::translation(p) * MathConversion::toMat4(q);
             return true;
         }
     }
     return false;
 }
+void Localization::setRobotTransform(const MyVector3f& position, const MyQuaternionf& rotation)
+{
+    robotTransform = MyMatrix4f::translation(position) * MathConversion::toMat4(rotation);
+}
+void Localization::setCameraTransform(const MyVector3f& position, const MyQuaternionf& rotation, const MyVector3f& scale)
+{
+    cameraToRobotTranfsorm = MyMatrix4f::translation(position) * MathConversion::toMat4(rotation) * MyMatrix4f::scale(scale);
+}
 //
 
 
 //  Protected functions
-std::pair<uint8_t, MyMatrix4f> Localization::parse(std::string s)
+std::pair<uint8_t, Localization::SmallTransform> Localization::parse(std::string s)
 {
+    SmallTransform t;
+
     int id;
-    MyVector3f p;
-    MyQuaternionf q;
     std::stringstream sstream(s);
 
     sstream >> id;
     sstream.ignore(3, ':');
-    sstream >> p.x; sstream >> p.y; sstream >> p.z;
-    sstream >> q.x; sstream >> q.y; sstream >> q.z; sstream >> q.w;
+    sstream >> t.position.x; sstream >> t.position.y; sstream >> t.position.z;
+    sstream >> t.rotation.x; sstream >> t.rotation.y; sstream >> t.rotation.z; sstream >> t.rotation.w;
+    sstream >> t.scale.x; sstream >> t.scale.y; sstream >> t.scale.z;
+    t.position *= 100;// from m to cm
+    t.rotation.normalize();
 
-    return std::pair<uint8_t, MyMatrix4f>(id, MyMatrix4f::translation(100 * p) * q.toMatrix4()); // from m to cm
-}
-std::pair<uint8_t, MyMatrix4f> Localization::parseScale(std::string s)
-{
-    int id;
-    MyVector3f v;
-    std::stringstream sstream(s);
-
-    sstream.ignore(3, 's');
-    sstream >> id;
-    sstream.ignore(3, ':');
-    sstream >> v.x; sstream >> v.y; sstream >> v.z;
-
-    return std::pair<uint8_t, MyMatrix4f>(id, MyMatrix4f::scale(v));
+    return std::pair<uint8_t, SmallTransform>(id, t);
 }
 std::pair<int, MyMatrix4f> Localization::getTotemAndMarkerTransform(const uint8_t& id)
 {
@@ -154,4 +222,19 @@ std::pair<int, MyMatrix4f> Localization::getTotemAndMarkerTransform(const uint8_
     }
     return std::pair<int, MyMatrix4f>(-1, MyMatrix4f());
 }
+const Localization::Totem& Localization::getTotem(const uint8_t& totemId)
+{
+    for(unsigned int i=0; i<totemList.size(); i++)
+    {
+        if(totemList[i].id == totemId)
+            return totemList[i];
+    }
+    return Totem();
+}
+
+
+MyMatrix4f Localization::SmallTransform::getTransform() const
+{
+    return MyMatrix4f::translation(position) * MathConversion::toMat4(rotation) * MyMatrix4f::scale(scale);
+};
 //

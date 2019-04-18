@@ -27,6 +27,12 @@ class MyMatrix4
                     for(uint8_t j=0;j<4;j++)
                         a[i][j] = m.a[i][j];
             }
+            template<typename T2> MyMatrix4(const MyMatrix3<T2>& m) : MyMatrix4()
+            {
+                for(uint8_t i=0;i<3;i++)
+                    for(uint8_t j=0;j<3;j++)
+                        a[i][j] = m.a[i][j];
+            }
             template<typename T2> MyMatrix4(const MyVector4<T2>& v1,const MyVector4<T2>& v2,const MyVector4<T2>& v3,const MyVector4<T2>& v4)
             {
                 a[0][0] = v1.x; a[0][1] = v2.x; a[0][2] = v3.x; a[0][3] = v4.x;
@@ -134,7 +140,7 @@ class MyMatrix4
                         r.x = a[0][0]*v.x + a[0][1]*v.y + a[0][2]*v.z + a[0][3]*v.w;
                         r.y = a[1][0]*v.x + a[1][1]*v.y + a[1][2]*v.z + a[1][3]*v.w;
                         r.z = a[2][0]*v.x + a[2][1]*v.y + a[2][2]*v.z + a[2][3]*v.w;
-                        r.z = a[3][0]*v.x + a[3][1]*v.y + a[3][2]*v.z + a[3][3]*v.w;
+                        r.w = a[3][0]*v.x + a[3][1]*v.y + a[3][2]*v.z + a[3][3]*v.w;
                     return r;
                 }
             //}
@@ -194,7 +200,7 @@ class MyMatrix4
 
                     for(uint8_t i=0;i<3;i++)
                         for(uint8_t j=0;j<3;j++)
-                            r[i][j] = R.a[i][j];
+                            r.a[i][j] = R.a[i][j];
                     return r;
                 };
                 static MyMatrix4 translation(const MyVector3<T>& v)
@@ -222,14 +228,20 @@ class MyMatrix4
                         for(uint8_t i=0;i<4;i++)
                             for(uint8_t j=0;j<4;j++)
                                 I.a[i][j] = std::pow(-1, i+j) * getCofactor(j, i);
-                        return I / d;
+                        return I/d;
                     }
                     else
                     {
                         throw std::invalid_argument("Matrix4 not invertible");
-                        return MyMatrix4(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+                        return zero();
                     }
                 };
+                MyVector3<T> getOrigin() const { return MyVector3<T>(a[0][3], a[1][3], a[2][3]); };
+                MyVector3<T> getX() const { return MyVector3<T>(a[0][0], a[1][0], a[2][0]); };
+                MyVector3<T> getY() const { return MyVector3<T>(a[0][1], a[1][1], a[2][1]); };
+                MyVector3<T> getZ() const { return MyVector3<T>(a[0][2], a[1][2], a[2][2]); };
+
+                static MyMatrix4 zero() { return MyMatrix4(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0); };
             //}
 
         //Attributes

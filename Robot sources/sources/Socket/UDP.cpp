@@ -93,7 +93,7 @@ std::string UDPsocket::read()
 {
     sockaddr_in src_addr;
     socklen_t src_addr_len = sizeof(src_addr);
-    int rcvlen = recvfrom(udpsocket, rcvBuffer, UDP_RCV_BUFFERSIZE, 0, reinterpret_cast<sockaddr*>(&src_addr), &src_addr_len);
+    int rcvlen = recvfrom(udpsocket, rcvBuffer, UDP_RCV_BUFFERSIZE, MSG_DONTWAIT, reinterpret_cast<sockaddr*>(&src_addr), &src_addr_len);
     if(rcvlen < 0)
     {
         switch (errno)

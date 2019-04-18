@@ -13,21 +13,16 @@ class MyQuaternion : public MyVector4<T>
 {
     public:
         //Public functions
+            MyQuaternion(T X,T Y,T Z,T W) : MyVector4<T>(X,Y,Z,W){};
+
         //{ Special functions
-            MyMatrix3<T> toMatrix3() const
+            MyQuaternion inverse() const
             {
-                return MyMatrix3<T>(1-2*MyVector4<T>::y*MyVector4<T>::y-2*MyVector4<T>::z*MyVector4<T>::z, 2*MyVector4<T>::x*MyVector4<T>::y-2*MyVector4<T>::z*MyVector4<T>::w,   2*MyVector4<T>::x*MyVector4<T>::z+2*MyVector4<T>::y*MyVector4<T>::y,
-                                    2*MyVector4<T>::x*MyVector4<T>::y+2*MyVector4<T>::z*MyVector4<T>::w,   1-2*MyVector4<T>::x*MyVector4<T>::x-2*MyVector4<T>::z*MyVector4<T>::z, 2*MyVector4<T>::y*MyVector4<T>::z-2*MyVector4<T>::x*MyVector4<T>::w,
-                                    2*MyVector4<T>::x*MyVector4<T>::z-2*MyVector4<T>::y*MyVector4<T>::w,   2*MyVector4<T>::y*MyVector4<T>::z+2*MyVector4<T>::x*MyVector4<T>::w,   1-2*MyVector4<T>::x*MyVector4<T>::x-2*MyVector4<T>::y*MyVector4<T>::y);
+                return MyQuaternion(-MyVector4<T>::x, -MyVector4<T>::y, -MyVector4<T>::z, MyVector4<T>::w);
             };
-            MyMatrix4<T> toMatrix4() const
+            static MyQuaternion identity()
             {
-                MyMatrix4<T> r;
-                MyMatrix3<T> R = toMatrix3();
-                for(uint8_t i=0;i<3;i++)
-                    for(uint8_t j=0;j<3;j++)
-                        r.a[i][j] = R.a[i][j];
-                return r;
+                return MyQuaternion(0,0,0,1);
             }
         //}
 };

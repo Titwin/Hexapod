@@ -15,6 +15,7 @@
 #include "Socket/UDP.hpp"
 #include "Socket/Serializer.hpp"
 #include "Localization/Localization.hpp"
+#include"Maths/MathConversion.hpp"
 
 #define UDP_SEND_PORT "5014"
 #define UDP_HOSTNAME "Thibault-SED-PC.local"
@@ -28,6 +29,7 @@ void *TTLThreadMain(void* arg);
 void openSerialPort(std::string portName);
 void closeSerialPort();
 void setCPUAffinity(const  pthread_t& thread, const int& cpu, const std::string& threadName);
+void initializeEnvironement(Localization& locSystem);
 //
 
 
@@ -62,7 +64,10 @@ int main()
     GamePad gamepad;
     openSerialPort("/dev/ttyAMA0");
     Hexapod robot("Arane 2.0");
-    Localization LocalizationSystem("totems.txt");
+    Localization localizationSystem("totems.txt");
+    initializeEnvironement(localizationSystem);
+
+
     UDPsocket UDPcomputer(5013);
     UDPsocket UDPvision(5016);
 
@@ -186,8 +191,10 @@ int main()
             UDPcomputer.getIpFromHostname(UDP_HOSTNAME, &computerIP, (computerIP.empty() ? -1 : 1));
         if(!computerIP.empty())
         {
-            std::string s = Serializer::serialize(robot.getCorrectedTranslationSpeed(), "velocity");
-            s = Serializer::serialize(robot.getCorrectedRotationSpeed(), s + ";angular");
+            std::string s = Serializer::serialize(localizationSystem.getRobotTransform().getOrigin(), "position");
+            s = Serializer::serialize(MathConversion::toQuat(localizationSystem.getRobotTransform()), s + ";orientation");
+            s = Serializer::serialize(robot.getCorrectedTranslationSpeed(), s + ";velocity");
+            s = Serializer::serialize(robot.getCorrectedRotationSpeed(), s + ";angularVelocity");
             UDPcomputer.sendMessageTo(Serializer::SYSTEM, (const uint8_t*)s.c_str(), s.size(), computerIP.c_str(), UDP_SEND_PORT);
 
             if(!nodeMap.empty() && !nodeMap[Network::NODE_SCS15].empty())
@@ -209,7 +216,7 @@ int main()
             std::cout << Utils::SUCCESS << " : from UDPcomputer" << std::endl;
             std::cout << computerMsg << std::endl;
         }
-        LocalizationSystem.update(UDPvision.read());
+        localizationSystem.update(UDPvision.read(), FRAME_TIME, robot.getCorrectedTranslationSpeed(), robot.getCorrectedRotationSpeed());
 
 
         /// end
@@ -272,7 +279,7 @@ void* TTLThreadMain(void* arg)
 }
 //
 
-/// Usefull functions
+/// Useful functions
 void openSerialPort(std::string portName)
 {
     std::cout<<"Connecting :  "<<portName;
@@ -314,5 +321,15 @@ void setCPUAffinity(const pthread_t& thread, const int& cpu, const std::string& 
         if (CPU_ISSET(j, &cpuset))
             std::cout << j << ' ';
     std::cout << std::endl;
+}
+
+/// Table initialization
+void initializeEnvironement(Localization& locSystem)
+{
+
+    locSystem.setCameraTransform(MyVector3f(0,7,-7), MyQuaternionf(0,0,0,1)/*(-0.5,0.5,0.5,0.5)*/, MyVector3f(1,-1,1));
+    locSystem.setRobotTransform(MyVector3f(0,0,-7), MyQuaternionf::identity());
+
+    locSystem.setTotemTransform(0, MyVector3f(0,0,70), MyQuaternionf::identity());
 }
 

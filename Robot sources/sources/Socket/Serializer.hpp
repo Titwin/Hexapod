@@ -25,6 +25,7 @@ class Serializer
         /// Public functions
         static std::string serialize(std::map<uint8_t, Network::Node*>* nodelist, const bool& zipped = true);
         static std::string serialize(const MyVector3f& v, std::string input = "");
+        static std::string serialize(const MyVector4f& v, std::string input = "");
         //
 
     protected:
