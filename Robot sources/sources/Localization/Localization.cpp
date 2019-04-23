@@ -23,14 +23,15 @@ Localization::Localization(const std::string& totemFileName): visionConfidence(0
             continue;
         if(s.find("Totem") != std::string::npos)
         {
-            int totemId;
+            std::pair<uint8_t, SmallTransform> p = parse(s.substr(s.find("Totem") + 6));
+            /*int totemId;
             std::stringstream sstream(s);
             sstream.ignore(s.find("Totem") + 2, 'm');
-            sstream >> totemId;
+            sstream >> totemId;*/
 
             Totem totem;
-            totem.transform = MyMatrix4f();
-            totem.id = totemId;
+            totem.transform = p.second.getTransform();
+            totem.id = p.first;
             totemList.push_back(totem);
         }
         else if(s.size() > 10)
@@ -40,6 +41,16 @@ Localization::Localization(const std::string& totemFileName): visionConfidence(0
         }
     }
     myfile.close();
+
+
+    /*for(unsigned int i=0; i<totemList.size(); i++)
+    {
+        std::cout<<"Totem : "<<(int)totemList[i].id<<std::endl;
+        std::cout<<totemList[i].transform;
+        for(auto it = totemList[i].markerList.begin(); it != totemList[i].markerList.end(); it++)
+            std::cout<<" marker "<<(int)it->first<<std::endl;
+        std::cout<<std::endl;
+    }*/
 }
 Localization::~Localization()
 {}
