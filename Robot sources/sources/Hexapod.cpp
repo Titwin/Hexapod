@@ -1,8 +1,8 @@
 #include "Hexapod.hpp"
 
-#define ZERO_HEIGHT (-6.9)
+#define ZERO_HEIGHT (-8)
 #define STEP_LENGTH 5
-#define RADIUS_DOMAIN 17
+#define RADIUS_DOMAIN 19
 #define DOMAIN_ANGLE 45
 
 
@@ -21,29 +21,29 @@ Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
     takeoffdownPosition = new MyVector3f[6];
 
     //{ Initialize angles offsets
-        motorAnglesOffset[0][0] = 0;   sens[0][0] = -1;
-        motorAnglesOffset[0][1] = 0;   sens[0][1] =  1;
-        motorAnglesOffset[0][2] = 0;   sens[0][2] = -1;
+        motorAnglesOffset[0][0] = 8;   sens[0][0] = -1;
+        motorAnglesOffset[0][1] = -219;   sens[0][1] =  1;
+        motorAnglesOffset[0][2] = 200;   sens[0][2] = -1;
 
-        motorAnglesOffset[1][0] = -24; sens[1][0] = -1;
-        motorAnglesOffset[1][1] = -31; sens[1][1] =  1;
-        motorAnglesOffset[1][2] =  30;  sens[1][2] = -1;
+        motorAnglesOffset[1][0] = 2; sens[1][0] = -1;
+        motorAnglesOffset[1][1] = -200; sens[1][1] =  1;
+        motorAnglesOffset[1][2] =  192;  sens[1][2] = -1;
 
-        motorAnglesOffset[2][0] = -55; sens[2][0] = -1;
-        motorAnglesOffset[2][1] = -17; sens[2][1] = -1;
-        motorAnglesOffset[2][2] = -5;  sens[2][2] = -1; // -5
+        motorAnglesOffset[2][0] = -24; sens[2][0] = -1;
+        motorAnglesOffset[2][1] = -208; sens[2][1] = 1;
+        motorAnglesOffset[2][2] = 200;  sens[2][2] = -1; // -5
 
-        motorAnglesOffset[3][0] = 0;   sens[3][0] = -1;
-        motorAnglesOffset[3][1] = 0;   sens[3][1] =  1;
-        motorAnglesOffset[3][2] = 0;   sens[3][2] = -1;
+        motorAnglesOffset[3][0] = -7;   sens[3][0] = -1;
+        motorAnglesOffset[3][1] = -208;   sens[3][1] =  1;
+        motorAnglesOffset[3][2] = 222;   sens[3][2] = -1;
 
-        motorAnglesOffset[4][0] =  7;  sens[4][0] = -1;
-        motorAnglesOffset[4][1] = -31; sens[4][1] =  1;
-        motorAnglesOffset[4][2] = -14; sens[4][2] = -1;
+        motorAnglesOffset[4][0] =  -6;  sens[4][0] = -1;
+        motorAnglesOffset[4][1] = -219; sens[4][1] =  1;
+        motorAnglesOffset[4][2] = 213; sens[4][2] = -1;
 
-        motorAnglesOffset[5][0] = 145; sens[5][0] = -1;
-        motorAnglesOffset[5][1] =  19; sens[5][1] =  1;
-        motorAnglesOffset[5][2] = -40; sens[5][2] = -1;
+        motorAnglesOffset[5][0] = 13; sens[5][0] = -1;
+        motorAnglesOffset[5][1] = -208; sens[5][1] =  1;
+        motorAnglesOffset[5][2] = 213; sens[5][2] = -1;
     //}
 
     //{ Initialize legs machine state attributes
@@ -321,7 +321,7 @@ void Hexapod::animateGotoStart(float elapseTime)
     MyVector3f direction;
     for(int i=0;i<6;i++)
     {
-        direction = legTrajectory[i].front().first - legTarget[i];
+        direction = legTrajectory[i].front() - legTarget[i];
         if(direction.length() < 0.5f)
             legAtPosition++;
         else
@@ -352,7 +352,7 @@ void Hexapod::animateTransition(float elapseTime)
     MyVector3f direction;
     for(int i=0;i<6;i++)
     {
-        direction = legTrajectory[i].front().first - legTarget[i];
+        direction = legTrajectory[i].front() - legTarget[i];
         if(direction.length() < 0.5f)
             legAtPosition++;
         else
@@ -375,8 +375,8 @@ void Hexapod::animateTransition(float elapseTime)
                                                     -17*sin(2*M_PI/180.f),
                                                      3);
 
-                    legTrajectory[0].push_back(std::pair<MyVector3f,float>(legDomainCenter[0],0));
-                    legTrajectory[1].push_back(std::pair<MyVector3f,float>(legDomainCenter[1],0));
+                    legTrajectory[0].push_back(legDomainCenter[0]);
+                    legTrajectory[1].push_back(legDomainCenter[1]);
                 }
                 setState(WALK);
                 return;
@@ -399,7 +399,7 @@ void Hexapod::animateAutonomousLegs(float elapseTime)
         if(legsState[i] != AUTONOMOUS) continue;
         if(legTrajectory[i].size() != 0)
         {
-            direction = legTrajectory[i].front().first - legTarget[i];
+            direction = legTrajectory[i].front() - legTarget[i];
             if(direction.length() < 0.5f)
                 legTrajectory[i].pop_front();
             else
@@ -424,15 +424,20 @@ void Hexapod::setState(RobotState s)
         case INIT:
             stepHeight = 6;
             robotHeight = ZERO_HEIGHT;
-            initiateLegDomainCenter(RADIUS_DOMAIN, DOMAIN_ANGLE, robotHeight);
 
+            initiateLegDomainCenter(RADIUS_DOMAIN + 2, DOMAIN_ANGLE, robotHeight);
             for(int i=0;i<6;i++)
             {
                 legTarget[i] = legPosition[i];
-
                 legTrajectory[i].clear();
-                legTrajectory[i].push_back(std::pair<MyVector3f,float>(legDomainCenter[i] - MyVector3f(0,0,robotHeight),0));
-                legTrajectory[i].push_back(std::pair<MyVector3f,float>(legDomainCenter[i],0));
+                legTrajectory[i].push_back(legDomainCenter[i] - MyVector3f(0,0,robotHeight-3));
+            }
+
+            initiateLegDomainCenter(RADIUS_DOMAIN, DOMAIN_ANGLE, robotHeight);
+            for(int i=0;i<6;i++)
+            {
+                legTrajectory[i].push_back(legDomainCenter[i] - MyVector3f(0,0,robotHeight-1));
+                legTrajectory[i].push_back(legDomainCenter[i]);
             }
             break;
 
@@ -468,19 +473,19 @@ void Hexapod::setState(RobotState s)
                     int tmp = j%nbGroup;
                     if(legsGroup[i] == tmp)
                     {
-                        legTrajectory[i].push_back(std::pair<MyVector3f,float>(legDomainCenter[i] + MyVector3f(0,0,-robotHeight),0));
-                        legTrajectory[i].push_back(std::pair<MyVector3f,float>(legDomainCenter[i],0));
+                        legTrajectory[i].push_back(legDomainCenter[i] + MyVector3f(0,0,-robotHeight));
+                        legTrajectory[i].push_back(legDomainCenter[i]);
                         goodPosition = true;
                     }
                     else if(goodPosition)
                     {
-                        legTrajectory[i].push_back(std::pair<MyVector3f,float>(legDomainCenter[i],0));
-                        legTrajectory[i].push_back(std::pair<MyVector3f,float>(legDomainCenter[i],0));
+                        legTrajectory[i].push_back(legDomainCenter[i]);
+                        legTrajectory[i].push_back(legDomainCenter[i]);
                     }
                     else
                     {
-                        legTrajectory[i].push_back(std::pair<MyVector3f,float>(legPosition[i],0));
-                        legTrajectory[i].push_back(std::pair<MyVector3f,float>(legPosition[i],0));
+                        legTrajectory[i].push_back(legPosition[i]);
+                        legTrajectory[i].push_back(legPosition[i]);
                     }
                 }
             }

@@ -16,6 +16,8 @@ void Network::nodeBroadcast(const NodeType& type, const NodeAttributes& attribut
 {
     pthread_mutex_lock(&mutex);
     nodesBroadcastMessage[type].push_back(std::pair<NodeAttributes, uint16_t>(attribute, value));
+    for(auto it=nodeMap[type].begin(); it!=nodeMap[type].end(); it++)
+        setNodeAttributesNoLock(type, attribute, it->first, value, 0);
     pthread_mutex_unlock(&mutex);
 }
 void Network::getNodeMap(std::map<NodeType, std::map<uint8_t, Node*> >* destination)
@@ -29,40 +31,15 @@ void Network::getNodeMap(std::map<NodeType, std::map<uint8_t, Node*> >* destinat
 void Network::setNodeAttributes(const NodeType& type, const NodeAttributes& attribute, const uint8_t& id, const uint16_t& value)
 {
     pthread_mutex_lock(&mutex);
-    auto it = nodeMap[type].find(id);
-    if(it != nodeMap[type].end())
-    {
-        if(type == NODE_LEGBOARD)
-        {
-            LegBoard* const leg = static_cast<LegBoard*>(it->second);
-            switch(attribute)
-            {
-                case LEGBOARD_RED:   leg->red = value;   leg->needSync = 1; break;
-                case LEGBOARD_GREEN: leg->green = value; leg->needSync = 1; break;
-                case LEGBOARD_BLUE:  leg->blue = value;  leg->needSync = 1; break;
-                default: std::cout<<"LegBoard attribute not supported yet "<<std::endl; break;
-            }
-        }
-        else if(type == NODE_SCS15)
-        {
-            Scs15* const scs15 = static_cast<Scs15*>(it->second);
-            switch(attribute)
-            {
-                case SCS15_TARGET_POSITION: scs15->targetPos = value;   break;
-                case SCS15_TORQUE:          scs15->torque = value;      scs15->needSync = 1; break;
-                case SCS15_SPEED:           scs15->speed = value;       scs15->needSync = 1; break;
-                case SCS15_TORQUE_LIMIT:    scs15->torqueLimit = value; scs15->needSync = 1; break;
-                default: std::cout<<"Scs15 attribute not supported"<<std::endl; break;
-            }
-        }
-        else std::cout<<"Node type not supported yet"<<std::endl;
-    }
+    setNodeAttributesNoLock(type, attribute, id, value);
     pthread_mutex_unlock(&mutex);
 }
 void Network::setSyncNodeAttributes(const NodeType& type, const NodeAttributes& attribute, const uint8_t& idLength, const uint8_t* const id, const uint16_t* const value)
 {
+    pthread_mutex_lock(&mutex);
     for(uint8_t i=0; i<idLength; i++)
-        setNodeAttributes(type, attribute, id[i], value[i]);
+        setNodeAttributesNoLock(type, attribute, id[i], value[i]);
+    pthread_mutex_unlock(&mutex);
 }
 //
 
@@ -172,26 +149,48 @@ void Network::broadcastAll(const bool& verbose)
                 case NODE_LEGBOARD:
                     switch(attribute)
                     {
-                        case LEGBOARD_ACTION: LEGBOARD.action(LegBoardController::BROADCAST_ID); break;
-                        case LEGBOARD_RESET:  LEGBOARD.reset(LegBoardController::BROADCAST_ID);  break;
+                        case LEGBOARD_ACTION:
+                            LEGBOARD.action(LegBoardController::BROADCAST_ID);
+                            break;
+                        case LEGBOARD_RESET:
+                            LEGBOARD.reset(LegBoardController::BROADCAST_ID);
+                            break;
 
-                        case LEGBOARD_RED:    LEGBOARD.setRegister(LegBoardController::BROADCAST_ID, LegBoardController::REG_RED, 1, &lowValue);   break;
-                        case LEGBOARD_GREEN:  LEGBOARD.setRegister(LegBoardController::BROADCAST_ID, LegBoardController::REG_GREEN, 1, &lowValue); break;
-                        case LEGBOARD_BLUE:   LEGBOARD.setRegister(LegBoardController::BROADCAST_ID, LegBoardController::REG_BLUE, 1, &lowValue);  break;
+                        case LEGBOARD_RED:
+                            LEGBOARD.setRegister(LegBoardController::BROADCAST_ID, LegBoardController::REG_RED, 1, &lowValue);
+                            break;
+                        case LEGBOARD_GREEN:
+                            LEGBOARD.setRegister(LegBoardController::BROADCAST_ID, LegBoardController::REG_GREEN, 1, &lowValue);
+                            break;
+                        case LEGBOARD_BLUE:
+                            LEGBOARD.setRegister(LegBoardController::BROADCAST_ID, LegBoardController::REG_BLUE, 1, &lowValue);
+                            break;
 
-                        default: std::cout << "LEGBOARD broadcast attribute not supported yet" << std::endl; break;
+                        default:
+                            std::cout << "LEGBOARD broadcast attribute not supported yet" << std::endl;
+                            break;
                     }
                     break;
 
                 case NODE_SCS15:
                     switch(attribute)
                     {
-                        case SCS15_RESET: SCS15.reset(SCS15Controller::BROADCAST_ID);  break;
+                        case SCS15_RESET:
+                            SCS15.reset(SCS15Controller::BROADCAST_ID);
+                            break;
 
-                        case SCS15_TORQUE:           SCS15.setRegister(SCS15Controller::BROADCAST_ID, SCS15Controller::P_TORQUE_ENABLE, 1, &lowValue);            break;
-                        case SCS15_TARGET_POSITION:  SCS15.setRegister(SCS15Controller::BROADCAST_ID, SCS15Controller::P_GOAL_POSITION_L, 2, (uint8_t*)&value);   break;
-                        case SCS15_SPEED:            SCS15.setRegister(SCS15Controller::BROADCAST_ID, SCS15Controller::P_GOAL_TIME_L, 2, (uint8_t*)&value);       break;
-                        case SCS15_TORQUE_LIMIT:     SCS15.setRegister(SCS15Controller::BROADCAST_ID, SCS15Controller::P_MAX_TORQUE_L, 2, (uint8_t*)&value);      break;
+                        case SCS15_TORQUE:
+                            SCS15.setRegister(SCS15Controller::BROADCAST_ID, SCS15Controller::P_TORQUE_ENABLE, 1, &lowValue);
+                            break;
+                        case SCS15_TARGET_POSITION:
+                            SCS15.setRegister(SCS15Controller::BROADCAST_ID, SCS15Controller::P_GOAL_POSITION_L, 2, (uint8_t*)&value);
+                            break;
+                        case SCS15_SPEED:
+                            SCS15.setRegister(SCS15Controller::BROADCAST_ID, SCS15Controller::P_GOAL_TIME_L, 2, (uint8_t*)&value);
+                            break;
+                        case SCS15_TORQUE_LIMIT:
+                            SCS15.setRegister(SCS15Controller::BROADCAST_ID, SCS15Controller::P_MAX_TORQUE_L, 2, (uint8_t*)&value);
+                            break;
 
                         default: std::cout << "scs15 broadcast attribute not supported yet" << std::endl; break;
                     }
@@ -235,10 +234,12 @@ int Network::synchronizeScs15(const bool& verbose)
             scs15->presentPos = pos;
             scs15->connectionFails = 0;
 
-            idsSend[respondingIDN] = it->first;
-            posSend[respondingIDN] = scs15->targetPos;
-            respondingIDN++;
-
+            if(scs15->torque)
+            {
+                idsSend[respondingIDN] = it->first;
+                posSend[respondingIDN] = scs15->targetPos;
+                respondingIDN++;
+            }
             updates++;
         }
         else scs15->connectionFails++;
@@ -260,6 +261,7 @@ int Network::synchronizeScs15(const bool& verbose)
         }
         if(syncIndex == 20)
         {
+          std::cout<<"suncIndex "<<(int)syncIndex<<std::endl;
           SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
           SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
           SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
@@ -269,9 +271,9 @@ int Network::synchronizeScs15(const bool& verbose)
     if(respondingIDN) SCS15.syncSetPosition(idsSend, respondingIDN, posSend);
     if(syncIndex)
     {
-      SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
-      SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
-      SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
+      //SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
+      //SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
+      //SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
     }
     return updates;
 }
@@ -347,6 +349,37 @@ int Network::synchronizeLegBoard(const bool& verbose)
 //
 
 /// Protected functions
+void Network::setNodeAttributesNoLock(const NodeType& type, const NodeAttributes& attribute, const uint8_t& id, const uint16_t& value, const uint8_t& needUpdate)
+{
+    auto it = nodeMap[type].find(id);
+    if(it != nodeMap[type].end())
+    {
+        if(type == NODE_LEGBOARD)
+        {
+            LegBoard* const leg = static_cast<LegBoard*>(it->second);
+            switch(attribute)
+            {
+                case LEGBOARD_RED:   leg->red = value;   leg->needSync = needUpdate; break;
+                case LEGBOARD_GREEN: leg->green = value; leg->needSync = needUpdate; break;
+                case LEGBOARD_BLUE:  leg->blue = value;  leg->needSync = needUpdate; break;
+                default: std::cout<<"LegBoard attribute not supported yet "<<std::endl; break;
+            }
+        }
+        else if(type == NODE_SCS15)
+        {
+            Scs15* const scs15 = static_cast<Scs15*>(it->second);
+            switch(attribute)
+            {
+                case SCS15_TARGET_POSITION: scs15->targetPos = value;   break;
+                case SCS15_TORQUE:          scs15->torque = value;      scs15->needSync = needUpdate; break;
+                case SCS15_SPEED:           scs15->speed = value;       scs15->needSync = needUpdate; break;
+                case SCS15_TORQUE_LIMIT:    scs15->torqueLimit = value; scs15->needSync = needUpdate; break;
+                default: std::cout<<"Scs15 attribute not supported"<<std::endl; break;
+            }
+        }
+        else std::cout<<"Node type not supported yet"<<std::endl;
+    }
+}
 std::string Network::verboseNodeType(const NodeType& type) const
 {
     switch(type)

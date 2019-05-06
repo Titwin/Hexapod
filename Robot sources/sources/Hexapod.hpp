@@ -108,7 +108,7 @@ class Hexapod
             MyVector3f* takeoffdownPosition;
 
         //  trajectory parameters
-            std::deque<std::pair<MyVector3f,float> > legTrajectory[6];
+            std::deque<MyVector3f> legTrajectory[6];
             bool blockAnimFlag[6];
 
         //  leg machine states attributes

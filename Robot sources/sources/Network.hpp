@@ -100,6 +100,8 @@ class Network
         /// Standard frame data timing functions
         int synchronizeScs15(const bool& verbose);
         int synchronizeLegBoard(const bool& verbose);
+
+        void setNodeAttributesNoLock(const NodeType& type, const NodeAttributes& attribute, const uint8_t& id, const uint16_t& value, const uint8_t& needUpdate = 1);
         //
 
         /// Protected functions

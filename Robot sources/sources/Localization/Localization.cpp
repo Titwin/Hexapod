@@ -129,6 +129,7 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
         }
 
         /// compute cloud centroid and error estimation
+        std::cout<<"----"<<std::endl;
         for(auto it=positionCloud.begin(); it!=positionCloud.end(); it++)
         {
             MyMatrix4f centroidTransform = MyMatrix4f::zero();
@@ -152,7 +153,7 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
             float standardDeviation = std::sqrt(variance) / it->second.size();
             centroids[it->first] = std::pair<float, MyMatrix4f>(standardDeviation, centroidTransform);
 
-            //std::cout<<standardDeviation<<std::endl<<centroidTransform<<std::endl;
+            std::cout<<standardDeviation<<std::endl<<centroidTransform<<std::endl;
         }
 
         /// compute centroids weighted average
@@ -169,6 +170,8 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
         for(auto it = orphanMarkers.begin(); it!=orphanMarkers.end(); it++)
             it->second = M * it->second;
         visionTransform = M * cameraToRobotTranfsorm;
+
+        std::cout<<"final "<<visionConfidence<<std::endl<<visionTransform<<std::endl;
 
         robotTransform = visionTransform;
         odometryTransform = visionTransform;

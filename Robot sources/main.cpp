@@ -85,6 +85,7 @@ int main()
     {
         auto loopingTime = std::chrono::high_resolution_clock::now();
         NET->getNodeMap(&nodeMap);
+        NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, 0);
         if(nodeMap[Network::NODE_SCS15].size() >= 18)
             break;
 
@@ -100,7 +101,7 @@ int main()
 
         while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < 500);
 
-        break;
+        //break;
     }
 
 
@@ -108,7 +109,7 @@ int main()
     robot.setTorque(false);
     NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, 0);
     NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_SPEED, FRAME_TIME);
-    NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1023);
+    NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 200);
     NET->configuration = Network::CONFIG_ACCURATE_DISTANCE;
 
     std::cout<<"---------------------"<<std::endl;
@@ -124,7 +125,7 @@ int main()
         if(loopCount < 5)
         {
             NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_SPEED, FRAME_TIME);
-            NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1023);
+            NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 200);
         }
         if((loopCount%100) == 0)
             NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_ACTION);
@@ -149,7 +150,7 @@ int main()
         }
         if(complete)
             robot.setMotorAngles((uint8_t*)pos);
-        //else std::cout<<"missing data for good robot update  " <<nodeMap[Network::NODE_SCS15].size()<<"/18"<<std::endl;
+        else std::cout<<"missing data for good robot update  " <<nodeMap[Network::NODE_SCS15].size()<<"/18"<<std::endl;
         NET->setSyncNodeAttributes(Network::NODE_SCS15, Network::SCS15_TARGET_POSITION, 18, robot.getMotorsIds(), robot.getGoalMotorAngles());
 
         /// update / synchronize of legboard nodes
@@ -250,6 +251,75 @@ int main()
     std::cout<<"End of program. Farewell my friend !"<<std::endl;
     return 0;
 }
+int toto()
+{
+    /// Initialization
+    signal(SIGINT, &signalHandler);
+    setCPUAffinity(pthread_self(), 0, "Main");
+    std::cout<<"Hello friend !"<<std::endl;
+
+    if(!bcm2835_init())
+    {
+        std::cout<<"GPIO headers : wrong initialization"<<std::endl;
+        return -1;
+    }
+
+    openSerialPort("/dev/ttyAMA0");
+    NET = new Network();
+    std::map<Network::NodeType, std::map<uint8_t, Network::Node*> > nodeMap;
+
+    pthread_t TTLThread;
+    pthread_create(&TTLThread, NULL, &TTLThreadMain, NULL);
+    setCPUAffinity(TTLThread, 1, "TTLThreadMain");
+
+    std::chrono::time_point<std::chrono::system_clock> loopingTime = std::chrono::high_resolution_clock::now();
+
+    /// Wait for mapping to finished
+    while(!finishProgram)
+    {
+        loopingTime = std::chrono::high_resolution_clock::now();
+        NET->getNodeMap(&nodeMap);
+        NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, 0);
+        NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 128);
+
+        std::cout << "Current mapping : " << std::endl;
+        std::cout << "  Motors SCS15 : " << nodeMap[Network::NODE_SCS15].size() << "/18 {";
+            for(auto it = nodeMap[Network::NODE_SCS15].begin(); it!= nodeMap[Network::NODE_SCS15].end(); ++it)
+                std::cout << (int)it->first << " ";
+        std::cout << "}" << std::endl << "  LegBoards : " << nodeMap[Network::NODE_LEGBOARD].size() << "/6 {";
+            for(auto it = nodeMap[Network::NODE_LEGBOARD].begin(); it!= nodeMap[Network::NODE_LEGBOARD].end(); ++it)
+                std::cout << (int)it->first << " ";
+        std::cout << "}" << std::endl;
+
+        int i=0;
+        for(auto it = nodeMap[Network::NODE_SCS15].begin(); it!= nodeMap[Network::NODE_SCS15].end(); ++it, i++)
+        {
+            Network::Scs15* const scs15 = static_cast<Network::Scs15*>(it->second);
+            std::cout<<"    id: "<<(int)it->first<<" position: "<<(int)scs15->presentPos - 512<<std::endl;
+            if((i%3)==2)
+                std::cout<<std::endl;
+        }
+
+        while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < 500);
+    }
+
+    for(int i=0; i<5; i++)
+    {
+        loopingTime = std::chrono::high_resolution_clock::now();
+
+        NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, 0);
+        NET->synchonize(false);
+
+        while(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - loopingTime).count() < FRAME_TIME);
+    }
+
+    pthread_join(TTLThread, NULL);
+    closeSerialPort();
+    bcm2835_close();
+
+    std::cout<<"End of program. Farewell my friend !"<<std::endl;
+    return 0;
+}
 //
 
 
@@ -326,10 +396,7 @@ void setCPUAffinity(const pthread_t& thread, const int& cpu, const std::string& 
 /// Table initialization
 void initializeEnvironement(Localization& locSystem)
 {
-
-    locSystem.setCameraTransform(MyVector3f(0,7,-7), MyQuaternionf(0,0,0,1)/*(-0.5,0.5,0.5,0.5)*/, MyVector3f(1,-1,1));
+    locSystem.setCameraTransform(MyVector3f(0,7,-7), MathConversion::toQuat(MyMatrix4f::rotation(-90, MyVector3f(0,1,0))), MyVector3f(1,1,1));
     locSystem.setRobotTransform(MyVector3f(0,0,-7), MyQuaternionf::identity());
-
-    locSystem.setTotemTransform(0, MyVector3f(0,0,70), MyQuaternionf::identity());
 }
 

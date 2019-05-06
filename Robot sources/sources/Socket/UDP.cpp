@@ -5,7 +5,7 @@
 #include <iomanip>
 
 #define UDP_SEND_BUFFERSIZE 50000
-#define UDP_RCV_BUFFERSIZE 1000
+#define UDP_RCV_BUFFERSIZE 10000
 #define HEADER_SIZE 16
 
 using namespace Utils;
