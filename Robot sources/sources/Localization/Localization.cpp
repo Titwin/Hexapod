@@ -102,6 +102,8 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
                     MyVector3f z1 = w2m.getZ().normalize();                 //  marker z vector direction (in world space)
                     MyVector3f z2 = robotTransform.getZ().normalize();      //  camera z vector direction (in marker space)
 
+                    std::cout<<(int)it->first<<" "<<w2m.getOrigin()<<std::endl;
+
                     float w = std::abs(z1*z2);
                     constexpr float thresholdAngle(30.f);
                     constexpr float threshold1(cos(3.14159265/2 - thresholdAngle * 3.14159265 / 180.));
@@ -113,6 +115,9 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
                         recontructedPoint.first = MathConversion::remap(w, threshold2, 1.f, 1.f, 0.3f);
                     else
                         recontructedPoint.first = 1.f;
+
+                    w = std::max(0.1f, std::min(1.f, 1.3f - w));
+                    recontructedPoint.first = w*w*w*w;
                     recontructedPoint.second = w2m * m2c;                   //  world to camera
 
                     positionCloud[p.first].push_back(recontructedPoint);
@@ -169,7 +174,7 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
 
         for(auto it = orphanMarkers.begin(); it!=orphanMarkers.end(); it++)
             it->second = M * it->second;
-        visionTransform = M * cameraToRobotTranfsorm;
+        visionTransform = M;// * cameraToRobotTranfsorm;
 
         std::cout<<"final "<<visionConfidence<<std::endl<<visionTransform<<std::endl;
 
