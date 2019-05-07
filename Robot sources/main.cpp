@@ -109,7 +109,7 @@ int main()
     robot.setTorque(false);
     NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, 0);
     NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_SPEED, FRAME_TIME);
-    NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 200);
+    NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1023);
     NET->configuration = Network::CONFIG_ACCURATE_DISTANCE;
 
     std::cout<<"---------------------"<<std::endl;
@@ -125,7 +125,7 @@ int main()
         if(loopCount < 5)
         {
             NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_SPEED, FRAME_TIME);
-            NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 200);
+            NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1023);
         }
         if((loopCount%100) == 0)
             NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_ACTION);
