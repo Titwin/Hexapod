@@ -262,7 +262,7 @@ int Network::synchronizeScs15(const bool& verbose)
         if(syncIndex == 20)
         {
           std::cout<<"suncIndex "<<(int)syncIndex<<std::endl;
-          SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
+          //SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
           SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
           SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
           syncIndex = 0;
@@ -272,8 +272,8 @@ int Network::synchronizeScs15(const bool& verbose)
     if(syncIndex)
     {
       //SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
-      //SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
-      //SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
+      SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
+      SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
     }
     return updates;
 }

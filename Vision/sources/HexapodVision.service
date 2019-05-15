@@ -1,0 +1,13 @@
+[Unit]
+Description=Hexapod vision thread, running OpenCV and Aruco
+After=multi-user.target
+
+[Service]
+Type=idle
+Restart=always
+RestartSec=1
+WorkingDirectory=/home/pi/HexapodVision/bin/
+ExecStart=./home/pi/HexapodVision/bin/HexapodVision_v1
+
+[Install]
+WantedBy=multi-user.target

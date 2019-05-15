@@ -60,13 +60,23 @@ Localization::~Localization()
 void Localization::update(std::string visionResult, const float& elapsedTime, const MyVector3f& robotTranslationSpeed, const MyVector3f& robotRotationSpeed)
 {
     //{ odomery integration
-        MyMatrix4f M = MyMatrix4f::translation(elapsedTime * robotTranslationSpeed) *
-                       MyMatrix4f::rotation(elapsedTime * robotRotationSpeed.x, MyVector3f(1,0,0)) *
-                       MyMatrix4f::rotation(elapsedTime * robotRotationSpeed.y, MyVector3f(0,1,0)) *
-                       MyMatrix4f::rotation(elapsedTime * robotRotationSpeed.z, MyVector3f(0,0,1));
+        float v = 0;
+        if(robotTranslationSpeed.y > 0)
+            v = 10;
+        else if(robotTranslationSpeed.y < 0)
+            v = -10;
+
+        float a = 0;
+        if(robotRotationSpeed.x > 0)
+            a = -18;
+        else if(robotRotationSpeed.x < 0)
+            a = 18;
+
+        MyMatrix4f M = MyMatrix4f::translation(elapsedTime * MyVector3f(v,0,0)) *
+                       MyMatrix4f::rotation(elapsedTime * a, MyVector3f(0,1,0));
 
         odometryTransform = odometryTransform * M;
-        odometryConfidence += elapsedTime * robotTranslationSpeed.length();
+        odometryConfidence += elapsedTime * 4;      // 4cm per second
     //}
 
     //  clear per frame data
@@ -102,7 +112,7 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
                     MyVector3f z1 = w2m.getZ().normalize();                 //  marker z vector direction (in world space)
                     MyVector3f z2 = robotTransform.getZ().normalize();      //  camera z vector direction (in marker space)
 
-                    std::cout<<(int)it->first<<" "<<w2m.getOrigin()<<std::endl;
+                    //std::cout<<(int)it->first<<" "<<w2m.getOrigin()<<std::endl;
 
                     float w = std::abs(z1*z2);
                     constexpr float thresholdAngle(30.f);
@@ -134,7 +144,7 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
         }
 
         /// compute cloud centroid and error estimation
-        std::cout<<"----"<<std::endl;
+        //std::cout<<"----"<<std::endl;
         for(auto it=positionCloud.begin(); it!=positionCloud.end(); it++)
         {
             MyMatrix4f centroidTransform = MyMatrix4f::zero();
@@ -158,7 +168,7 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
             float standardDeviation = std::sqrt(variance) / it->second.size();
             centroids[it->first] = std::pair<float, MyMatrix4f>(standardDeviation, centroidTransform);
 
-            std::cout<<standardDeviation<<std::endl<<centroidTransform<<std::endl;
+            //std::cout<<standardDeviation<<std::endl<<centroidTransform<<std::endl;
         }
 
         /// compute centroids weighted average
@@ -176,19 +186,23 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
             it->second = M * it->second;
         visionTransform = M;// * cameraToRobotTranfsorm;
 
-        std::cout<<"final "<<visionConfidence<<std::endl<<visionTransform<<std::endl;
+        //std::cout<<"final "<<visionConfidence<<std::endl<<visionTransform<<std::endl;
 
-        robotTransform = visionTransform;
-        odometryTransform = visionTransform;
+        odometryTransform.a[0][3] = visionTransform.getOrigin().x;
+        odometryTransform.a[2][3] = visionTransform.getOrigin().z;
         odometryConfidence = visionConfidence;
     }
-    else robotTransform = odometryTransform;
+    robotTransform = odometryTransform;
 }
 
 
 MyMatrix4f Localization::getRobotTransform() const
 {
     return robotTransform;
+}
+MyMatrix4f Localization::getEmbedRobotTransform()
+{
+    return robotTransform*cameraToRobotTranfsorm;
 }
 bool Localization::setTotemTransform(const uint8_t& id, const MyVector3f& p, const MyQuaternionf& q)
 {

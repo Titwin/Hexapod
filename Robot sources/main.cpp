@@ -217,7 +217,7 @@ int main()
             std::cout << Utils::SUCCESS << " : from UDPcomputer" << std::endl;
             std::cout << computerMsg << std::endl;
         }
-        localizationSystem.update(UDPvision.read(), FRAME_TIME, robot.getCorrectedTranslationSpeed(), robot.getCorrectedRotationSpeed());
+        localizationSystem.update(UDPvision.read(), 0.001*FRAME_TIME, robot.getCorrectedTranslationSpeed(), robot.getCorrectedRotationSpeed());
 
 
         /// end

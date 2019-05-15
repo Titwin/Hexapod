@@ -24,6 +24,7 @@ class Localization
 
 
         MyMatrix4f getRobotTransform() const;
+        MyMatrix4f getEmbedRobotTransform();
         bool setTotemTransform(const uint8_t& id, const MyVector3f& p, const MyQuaternionf& q);
         void setRobotTransform(const MyVector3f& position, const MyQuaternionf& rotation);
         void setCameraTransform(const MyVector3f& position, const MyQuaternionf& rotation, const MyVector3f& scale);

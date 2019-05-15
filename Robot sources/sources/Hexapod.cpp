@@ -2,7 +2,7 @@
 
 #define ZERO_HEIGHT (-8)
 #define STEP_LENGTH 5
-#define RADIUS_DOMAIN 19
+#define RADIUS_DOMAIN 18
 #define DOMAIN_ANGLE 45
 
 
@@ -425,7 +425,7 @@ void Hexapod::setState(RobotState s)
             stepHeight = 6;
             robotHeight = ZERO_HEIGHT;
 
-            initiateLegDomainCenter(RADIUS_DOMAIN + 2, DOMAIN_ANGLE, robotHeight);
+            initiateLegDomainCenter(RADIUS_DOMAIN + 2, DOMAIN_ANGLE, robotHeight-1);
             for(int i=0;i<6;i++)
             {
                 legTarget[i] = legPosition[i];
