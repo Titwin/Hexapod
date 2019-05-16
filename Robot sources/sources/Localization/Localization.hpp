@@ -14,6 +14,8 @@
 class Localization
 {
     public:
+        float heading;
+
         //Default
         Localization(const std::string& totemFileName);
         ~Localization();
@@ -54,7 +56,7 @@ class Localization
         std::pair<uint8_t, SmallTransform> parse(std::string s);
         std::pair<uint8_t, MyMatrix4f> parseScale(std::string s);
         std::pair<int, MyMatrix4f> getTotemAndMarkerTransform(const uint8_t& id);
-        const Totem& getTotem(const uint8_t& totemId);
+        Totem* getTotem(const uint8_t& totemId);
         //
 
         //  Attributes

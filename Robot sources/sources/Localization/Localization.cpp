@@ -11,6 +11,10 @@
 //Default
 Localization::Localization(const std::string& totemFileName): visionConfidence(0.f), odometryConfidence(0.f)
 {
+    heading = 0;
+
+
+
     std::ifstream myfile;
     myfile.open(totemFileName, std::ifstream::in);
     if(!myfile.is_open())
@@ -60,19 +64,22 @@ Localization::~Localization()
 void Localization::update(std::string visionResult, const float& elapsedTime, const MyVector3f& robotTranslationSpeed, const MyVector3f& robotRotationSpeed)
 {
     //{ odomery integration
+        float epsilon = 1;
         float v = 0;
-        if(robotTranslationSpeed.y > 0)
+        if(robotTranslationSpeed.y > epsilon)
             v = 10;
-        else if(robotTranslationSpeed.y < 0)
+        else if(robotTranslationSpeed.y < -epsilon)
             v = -10;
 
         float a = 0;
-        if(robotRotationSpeed.x > 0)
+        if(robotRotationSpeed.x > epsilon)
             a = -18;
-        else if(robotRotationSpeed.x < 0)
+        else if(robotRotationSpeed.x < -epsilon)
             a = 18;
 
-        MyMatrix4f M = MyMatrix4f::translation(elapsedTime * MyVector3f(v,0,0)) *
+        heading += elapsedTime * a;
+
+        MyMatrix4f M = MyMatrix4f::translation(elapsedTime * MyVector3f(0,0,v)) *
                        MyMatrix4f::rotation(elapsedTime * a, MyVector3f(0,1,0));
 
         odometryTransform = odometryTransform * M;
@@ -83,6 +90,7 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
     seenMarkers.clear();
     positionCloud.clear();
     orphanMarkers.clear();
+    centroids.clear();
 
     //  parse vision module result
     if(!visionResult.empty())
@@ -111,8 +119,6 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
                     MyMatrix4f m2c = it->second.getTransform().inverse();   //  marker to camera
                     MyVector3f z1 = w2m.getZ().normalize();                 //  marker z vector direction (in world space)
                     MyVector3f z2 = robotTransform.getZ().normalize();      //  camera z vector direction (in marker space)
-
-                    //std::cout<<(int)it->first<<" "<<w2m.getOrigin()<<std::endl;
 
                     float w = std::abs(z1*z2);
                     constexpr float thresholdAngle(30.f);
@@ -144,7 +150,6 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
         }
 
         /// compute cloud centroid and error estimation
-        //std::cout<<"----"<<std::endl;
         for(auto it=positionCloud.begin(); it!=positionCloud.end(); it++)
         {
             MyMatrix4f centroidTransform = MyMatrix4f::zero();
@@ -167,30 +172,38 @@ void Localization::update(std::string visionResult, const float& elapsedTime, co
                 variance += (centroidPosition  - it->second[i].second.getOrigin()).square();
             float standardDeviation = std::sqrt(variance) / it->second.size();
             centroids[it->first] = std::pair<float, MyMatrix4f>(standardDeviation, centroidTransform);
-
-            //std::cout<<standardDeviation<<std::endl<<centroidTransform<<std::endl;
         }
 
         /// compute centroids weighted average
-        visionConfidence = 0.f;
-        MyMatrix4f M = MyMatrix4f::zero();
-        for(auto it=centroids.begin(); it!=centroids.end(); it++)
+        if(!centroids.empty())
         {
-            M += it->second.second;
-            visionConfidence += it->second.first;
+            visionConfidence = 0.f;
+            MyMatrix4f M = MyMatrix4f::zero();
+            for(auto it=centroids.begin(); it!=centroids.end(); it++)
+            {
+                M += it->second.second;
+                visionConfidence += it->second.first;
+            }
+            M /= centroids.size();
+            visionConfidence /= centroids.size();
+
+            for(auto it = orphanMarkers.begin(); it!=orphanMarkers.end(); it++)
+                it->second = M * it->second;
+            visionTransform = M;
+
+            MyVector3f p = MyVector3f(visionTransform.getOrigin().x, 10, visionTransform.getOrigin().z);
+            MyVector3f t = getTotem(getTotemAndMarkerTransform(seenMarkers.begin()->first).first)->transform.getOrigin();
+            MyVector3f d = (t-p).normalize();
+            heading = acos(d*MyVector3f(0,0,1))*180./3.14159265;
+            if(d*MyVector3f(1, 0, 0) < 0)
+                heading *= -1;
+            MyVector3f u = seenMarkers.begin()->second.getTransform().getOrigin();
+            u = MyVector3f(u.x, 0, u.z).normalize();
+            heading -= asin(u*MyVector3f(1,0,0))*180./3.14159265;
+
+            odometryTransform = MyMatrix4f::translation(p) * MyMatrix4f::rotation(heading, MyVector3f(0,1,0));
+            odometryConfidence = visionConfidence;
         }
-        M /= centroids.size();
-        visionConfidence /= centroids.size();
-
-        for(auto it = orphanMarkers.begin(); it!=orphanMarkers.end(); it++)
-            it->second = M * it->second;
-        visionTransform = M;// * cameraToRobotTranfsorm;
-
-        //std::cout<<"final "<<visionConfidence<<std::endl<<visionTransform<<std::endl;
-
-        odometryTransform.a[0][3] = visionTransform.getOrigin().x;
-        odometryTransform.a[2][3] = visionTransform.getOrigin().z;
-        odometryConfidence = visionConfidence;
     }
     robotTransform = odometryTransform;
 }
@@ -255,14 +268,14 @@ std::pair<int, MyMatrix4f> Localization::getTotemAndMarkerTransform(const uint8_
     }
     return std::pair<int, MyMatrix4f>(-1, MyMatrix4f());
 }
-const Localization::Totem& Localization::getTotem(const uint8_t& totemId)
+Localization::Totem* Localization::getTotem(const uint8_t& totemId)
 {
     for(unsigned int i=0; i<totemList.size(); i++)
     {
         if(totemList[i].id == totemId)
-            return totemList[i];
+            return &totemList[i];
     }
-    return Totem();
+    return nullptr;
 }
 
 

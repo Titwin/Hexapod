@@ -109,7 +109,7 @@ int main()
     robot.setTorque(false);
     NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, 0);
     NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_SPEED, FRAME_TIME);
-    NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1023);
+    NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1000);
     NET->configuration = Network::CONFIG_ACCURATE_DISTANCE;
 
     std::cout<<"---------------------"<<std::endl;
@@ -125,7 +125,7 @@ int main()
         if(loopCount < 5)
         {
             NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_SPEED, FRAME_TIME);
-            NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1023);
+            NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE_LIMIT, 1000);
         }
         if((loopCount%100) == 0)
             NET->nodeBroadcast(Network::NODE_LEGBOARD, Network::LEGBOARD_ACTION);
@@ -175,6 +175,7 @@ int main()
         if(gamepad.connected() && gamepad.instantPressed(GamePad::BACK))
         {
             robot.setTorque(!robot.getTorque());
+            NET->TORQUE = robot.getTorque();
             NET->nodeBroadcast(Network::NODE_SCS15, Network::SCS15_TORQUE, (robot.getTorque()?1:0));
         }
         if(gamepad.instantPressed(GamePad::START))
@@ -193,7 +194,7 @@ int main()
         if(!computerIP.empty())
         {
             std::string s = Serializer::serialize(localizationSystem.getRobotTransform().getOrigin(), "position");
-            s = Serializer::serialize(MathConversion::toQuat(localizationSystem.getRobotTransform()), s + ";orientation");
+            s = Serializer::serialize(MyVector3f(0, localizationSystem.heading, 0), s + ";orientation");
             s = Serializer::serialize(robot.getCorrectedTranslationSpeed(), s + ";velocity");
             s = Serializer::serialize(robot.getCorrectedRotationSpeed(), s + ";angularVelocity");
             UDPcomputer.sendMessageTo(Serializer::SYSTEM, (const uint8_t*)s.c_str(), s.size(), computerIP.c_str(), UDP_SEND_PORT);

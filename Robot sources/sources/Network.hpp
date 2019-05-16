@@ -15,6 +15,9 @@
 class Network
 {
     public:
+        bool TORQUE;
+
+
         /// Miscellaneous
         enum NodeType
         {

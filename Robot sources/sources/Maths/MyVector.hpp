@@ -86,6 +86,13 @@ class MyVector3
                         result.z = x*v.y - y*v.x;
                     return result;
                 };
+                static T angle(MyVector3 v1, MyVector3 v2)
+                {
+                    v1.normalize();
+                    v2.normalize();
+                    return acos(v1*v2) * 180 / 3.14159265;
+                    //return atan2(v1*v2, (v1^v2).length()) * 180 / 3.14159265;
+                };
             //}
 
             //{ Cast functions

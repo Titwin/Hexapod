@@ -4,6 +4,7 @@
 /// Default
 Network::Network()
 {
+    TORQUE = false;
     mutex = PTHREAD_MUTEX_INITIALIZER;
     nodeDiscoveryType = (int)NODE_LEGBOARD;
     nodeDiscoveryID = 0;
@@ -254,26 +255,26 @@ int Network::synchronizeScs15(const bool& verbose)
         }
 
         /// Send sync packet
-        if(respondingIDN == 20)
+        if(TORQUE && respondingIDN == 20)
         {
           SCS15.syncSetPosition(idsSend, respondingIDN, posSend);
           respondingIDN = 0;
         }
-        if(syncIndex == 20)
+        if(TORQUE && syncIndex == 20)
         {
           std::cout<<"suncIndex "<<(int)syncIndex<<std::endl;
           //SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
-          SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
-          SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
+          //SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
+          //SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
           syncIndex = 0;
         }
     }
-    if(respondingIDN) SCS15.syncSetPosition(idsSend, respondingIDN, posSend);
-    if(syncIndex)
+    if(TORQUE && respondingIDN) SCS15.syncSetPosition(idsSend, respondingIDN, posSend);
+    if(TORQUE && syncIndex)
     {
       //SCS15.syncSetTorque(syncIds, syncIndex, syncTorque);
-      SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
-      SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
+      //SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_MAX_TORQUE_L, syncTorqueLimit);
+      //SCS15.syncSetRegisterWord(syncIndex, syncIds, SCS15Controller::P_GOAL_TIME_L, syncSpeed);
     }
     return updates;
 }

@@ -310,7 +310,7 @@ void Hexapod::animateWalk(float elapseTime, MyVector3f translationSpeed, MyVecto
             default: break;
         }
 
-        targetAnglesArray[i] = inverseKModule->getAnglesFromExtremity(i, legTarget[i], motorAnglesArray[i]);
+        targetAnglesArray[i] = inverseKModule->getAnglesFromExtremity(i, legTarget[i], targetAnglesArray[i]);
     }
 }
 void Hexapod::animateGotoStart(float elapseTime)
