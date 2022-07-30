@@ -95,7 +95,7 @@ class Network
         //
 
         /// Attributes
-        std::atomic_ullong TTLbusError;
+        std::atomic<uint32_t> TTLbusError;
         std::atomic<uint8_t> configuration;
         //
 

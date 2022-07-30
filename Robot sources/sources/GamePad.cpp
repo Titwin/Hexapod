@@ -40,13 +40,13 @@ GamePad::GamePad() : rumbleSupport(0), rumbleMagnitude(0), rumbleTarget(0)
     else std::cout<<"ok"<<std::endl;
 
     //  Initialize event map & debug
-    for(int i=0;i<12;i++)
+    for(uint8_t i=0;i<12;i++)
     {
         buttonMap[i].value = false;
         buttonMap[i].pressed = false;
         buttonMap[i].released = false;
     }
-    for(int i=0;i<6;i++)
+    for(uint8_t i=0;i<6;i++)
         axisMap[i].value = 0;
     dbg = true;
 
@@ -108,7 +108,7 @@ void GamePad::update()
     else
     {
         //  erase some value for rising edge and falling edge detection
-        for(int i=0;i<12;i++)
+        for(uint8_t i=0;i<12;i++)
         {
             buttonMap[i].pressed = false;
             buttonMap[i].released = false;

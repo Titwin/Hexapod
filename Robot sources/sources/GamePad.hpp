@@ -63,7 +63,7 @@ class GamePad
         bool instantPressed(const ButtonAxisMap& id) {return buttonMap[id].pressed;};
         bool instantReleased(const ButtonAxisMap& id) {return buttonMap[id].released;};
 
-        int16_t getAxis(const ButtonAxisMap& id) {return axisMap[id%6].value;};
+        int16_t getAxis(const ButtonAxisMap& id) {return axisMap[(uint8_t)(id%6)].value;};
         float getExpAxis(const ButtonAxisMap& id);
         //
 

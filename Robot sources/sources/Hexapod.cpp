@@ -75,7 +75,7 @@ Hexapod::Hexapod(std::string s) : name(s),wellInitialized(false)
         maxTranslationSpeedMagnitude = 1.f;
         maxRotationSpeedMagnitude = maxTranslationSpeedMagnitude/20.f;
 
-        gainP = 0.7;
+        gainP = 0.7f;
     //}
 
     //{ Initialize some geometric parameter and initial target
@@ -116,9 +116,9 @@ void Hexapod::setMotorAngles(uint8_t* data)
 {
     for(unsigned int i=0; i<6; i++)
     {
-        motorAnglesArray[i].angle1 = sens[i][0]*((int)(data[6*i + 1]*256 + data[6*i    ]) - motorAnglesOffset[i][0] - 512.)/1023.*200.;
-        motorAnglesArray[i].angle2 = sens[i][1]*((int)(data[6*i + 3]*256 + data[6*i + 2]) - motorAnglesOffset[i][1] - 512.)/1023.*200.;
-        motorAnglesArray[i].angle3 = sens[i][2]*((int)(data[6*i + 5]*256 + data[6*i + 4]) - motorAnglesOffset[i][2] - 512.)/1023.*200.;
+        motorAnglesArray[i].angle1 = sens[i][0]*((float)(data[6*i + 1]*256 + data[6*i    ]) - motorAnglesOffset[i][0] - 512.f)/1023.f*200.f;
+        motorAnglesArray[i].angle2 = sens[i][1]*((float)(data[6*i + 3]*256 + data[6*i + 2]) - motorAnglesOffset[i][1] - 512.f)/1023.f*200.f;
+        motorAnglesArray[i].angle3 = sens[i][2]*((float)(data[6*i + 5]*256 + data[6*i + 4]) - motorAnglesOffset[i][2] - 512.f)/1023.f*200.f;
     }
     //int leg = 5;
     //std::cout << (int)(data[6*leg+1]*256 + data[6*leg]) << ' ' << (int)(data[6*leg+3]*256 + data[6*leg+2]) << ' ' << (int)(data[6*leg+5]*256 + data[6*leg+4]) << std::endl;
@@ -132,9 +132,9 @@ uint16_t* Hexapod::getGoalMotorAngles()
 {
     for(int i=0;i<6;i++)
     {
-        goalMotorAngle[3*i    ] = sens[i][0]*targetAnglesArray[i].angle1 * 1024/200. + 512 + motorAnglesOffset[i][0];
-        goalMotorAngle[3*i + 1] = sens[i][1]*targetAnglesArray[i].angle2 * 1024/200. + 512 + motorAnglesOffset[i][1];
-        goalMotorAngle[3*i + 2] = sens[i][2]*targetAnglesArray[i].angle3 * 1024/200. + 512 + motorAnglesOffset[i][2];
+        goalMotorAngle[3*i    ] = sens[i][0]*targetAnglesArray[i].angle1 * 1024/200.f + 512 + motorAnglesOffset[i][0];
+        goalMotorAngle[3*i + 1] = sens[i][1]*targetAnglesArray[i].angle2 * 1024/200.f + 512 + motorAnglesOffset[i][1];
+        goalMotorAngle[3*i + 2] = sens[i][2]*targetAnglesArray[i].angle3 * 1024/200.f + 512 + motorAnglesOffset[i][2];
     }
     return goalMotorAngle;
 }
@@ -368,11 +368,13 @@ void Hexapod::animateTransition(float elapseTime)
             {
                 if(robotGait==TETRAPOD || robotGait==METACHRONAL_4)
                 {
-                    legDomainCenter[0] = MyVector3f( 17*cos(2*M_PI/180.f),
-                                                     17*sin(2*M_PI/180.f),
+                    constexpr float a(2 * (float)M_PI / 180.f);
+
+                    legDomainCenter[0] = MyVector3f( 17*cosf(a),
+                                                     17*sinf(a),
                                                      3);
-                    legDomainCenter[1] = MyVector3f( 17*cos(2*M_PI/180.f),
-                                                    -17*sin(2*M_PI/180.f),
+                    legDomainCenter[1] = MyVector3f( 17*cosf(a),
+                                                    -17*sinf(a),
                                                      3);
 
                     legTrajectory[0].push_back(legDomainCenter[0]);
@@ -517,18 +519,22 @@ void Hexapod::setGait(RobotGait g, bool log)
         legDomainCenter[2] = legDomainCenter[1];
         legDomainCenter[5] = legDomainCenter[0];
 
-        legDomainCenter[1] = MyVector3f( 35*cos(2*M_PI/180.f),
-                                        -35*sin(2*M_PI/180.f),
+        constexpr float a(2 * (float)M_PI / 180.f);
+
+        legDomainCenter[1] = MyVector3f( 35*cosf(a),
+                                        -35*sinf(a),
                                          2);
-        legDomainCenter[0] = MyVector3f( 35*cos(2*M_PI/180.f),
-                                         35*sin(2*M_PI/180.f),
+        legDomainCenter[0] = MyVector3f( 35*cosf(a),
+                                         35*sinf(a),
                                          2);
 
-        legDomainCenter[3] = MyVector3f(-RADIUS_DOMAIN*cos(45*M_PI/180.f),
-                                        -RADIUS_DOMAIN*sin(45*M_PI/180.f),
+        constexpr float b(45 * (float)M_PI / 180.f);
+
+        legDomainCenter[3] = MyVector3f(-RADIUS_DOMAIN*cosf(b),
+                                        -RADIUS_DOMAIN*sinf(b),
                                          robotHeight);
-        legDomainCenter[4] = MyVector3f(-RADIUS_DOMAIN*cos(45*M_PI/180.f),
-                                         RADIUS_DOMAIN*sin(45*M_PI/180.f),
+        legDomainCenter[4] = MyVector3f(-RADIUS_DOMAIN*cosf(b),
+                                         RADIUS_DOMAIN*sinf(b),
                                          robotHeight);
     }
     else initiateLegDomainCenter(RADIUS_DOMAIN,DOMAIN_ANGLE,robotHeight);
@@ -671,22 +677,22 @@ MyVector3f Hexapod::getAirTarget(int legIndex,MyVector3f takeoffPos, float t)
 
 void Hexapod::initiateLegDomainCenter(float radius,float angle,float zeroHeight)
 {
-    angle *= M_PI/180.f;
+    angle *= (float)M_PI/180.f;
 
-    legDomainCenter[0] = MyVector3f( radius*cos(angle), radius*sin(angle), zeroHeight);
+    legDomainCenter[0] = MyVector3f( radius*cosf(angle), radius*sinf(angle), zeroHeight);
     legDomainCenter[1] = MyVector3f( radius - 1.f, 0, zeroHeight);
-    legDomainCenter[2] = MyVector3f( radius*cos(angle),-radius*sin(angle), zeroHeight);
+    legDomainCenter[2] = MyVector3f( radius*cosf(angle),-radius*sinf(angle), zeroHeight);
 
-    legDomainCenter[3] = MyVector3f(-radius*cos(angle), radius*sin(angle), zeroHeight);
+    legDomainCenter[3] = MyVector3f(-radius*cosf(angle), radius*sinf(angle), zeroHeight);
     legDomainCenter[4] = MyVector3f(-radius + 1.f, 0, zeroHeight);
-    legDomainCenter[5] = MyVector3f(-radius*cos(angle),-radius*sin(angle), zeroHeight);
+    legDomainCenter[5] = MyVector3f(-radius*cosf(angle),-radius*sinf(angle), zeroHeight);
 }
 
 
 inline float Hexapod::motorAngleFromBytes(const uint8_t& b1,const uint8_t& b2,const int8_t& s,const int16_t& offset)
 {
     int16_t angle = (int)(b1<<8)+b2;
-    return s*(angle - offset - 512.)/1024.*220.;
+    return s*(angle - offset - 512.f)/1024.f*220.f;
 }
 inline float Hexapod::limit(MyVector3f C,float R,MyVector3f P,MyVector3f u)
 {
@@ -695,7 +701,7 @@ inline float Hexapod::limit(MyVector3f C,float R,MyVector3f P,MyVector3f u)
 
     if(a>R) return -1;
     else if(P.length()>R && P*u>0) return -1;
-    else return R*cos(asin(a/R)) - P*u;
+    else return R*cosf(asinf(a/R)) - P*u;
 }
 //
 

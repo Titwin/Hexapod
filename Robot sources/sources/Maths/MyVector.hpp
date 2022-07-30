@@ -5,6 +5,8 @@
 #include <iostream>
 #include <iomanip>
 
+#pragma GCC diagnostic ignored "-Wconversion"
+
 template<typename T>
 class MyVector3
 {

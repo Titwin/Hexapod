@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <chrono>
 
+#pragma GCC diagnostic ignored "-Wconversion"
 
 class TTLbusController
 {
