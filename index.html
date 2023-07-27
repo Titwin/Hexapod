@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>PID.js Example</title>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.14/p5.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/addons/p5.dom.min.js"></script>
+		
+		<script>
+			var windowSizeX = 800;
+			var windowSizeY = 600;
+			var halfHeight = windowSizeY / 2;
+			var txtsize = 12;
+			var value = 0.0;
+			var currentIndex = 0;
+			var inputBuffer, outputBuffer;
+			var P; var I; var D; var inputSelect;
+			
+			var error = 0.0;
+			var integral = 0.0;
+			
+			function lerpFloat(a, b, t) { return a + t * (b - a); }
+			
+			function setup()
+			{
+				const myCanvas = createCanvas(windowSizeX, windowSizeY);
+				textSize(txtsize);
+				
+				inputBuffer = new Array(windowSizeX);
+				outputBuffer = new Array(windowSizeX);
+				for (let i = 0; i < inputBuffer.length; i++)
+				{
+					inputBuffer[i] = 0.0;
+					outputBuffer[i] = 0.0;
+				}
+				
+				
+				
+				P = createSlider(0, 2.0, 0.0, 0.01);
+			    P.position(10, 10);
+			    P.style('width', '200px');
+				
+				I = createSlider(0.0, 0.25, 0.0, 0.001);
+			    I.position(10, 30);
+			    I.style('width', '200px');
+				
+				D = createSlider(0.0, 1.3, 0.0, 0.01);
+			    D.position(10, 50);
+			    D.style('width', '200px');
+				
+				inputSelect = createSelect();
+				inputSelect.position(70, 75);
+				inputSelect.option('mouse');
+				inputSelect.option('square');
+				inputSelect.option('triangle');
+				inputSelect.option('dirac');
+				inputSelect.option('sinus');
+				inputSelect.selected('triangle');
+			}
+			
+			var frameCount = 0;
+			function update()
+			{
+				var inputMode = inputSelect.value();
+				var input = 0.0;
+				var A = 0.8 * halfHeight;
+				if (inputMode === 'mouse')
+					input = constrain(mouseY - halfHeight, -halfHeight, halfHeight);
+				else if (inputMode === 'dirac')
+					input = (frameCount % 100) == 0 ? -halfHeight+30 : 0;
+				else if (inputMode === 'sinus')
+					input = A * sin(0.0251328 * frameCount);
+				else if (inputMode === 'square')
+					input = (frameCount % 400) < 200 ? A : -A;
+				else if (inputMode === 'triangle')
+				{
+					var f = (frameCount % 400);
+					input = f < 200 ? lerpFloat(-A, A, 0.005 * f) : lerpFloat(A, -A, 0.005 * f - 1.0);
+				}
+				
+				inputBuffer[currentIndex] = input;
+				var previousIndex = (currentIndex - 1 + outputBuffer.length) % outputBuffer.length;
+				var prevprevIndex = (currentIndex - 2 + outputBuffer.length) % outputBuffer.length;
+				var e = input - outputBuffer[previousIndex];
+				var de = e - error;
+				
+				var correcteur = P.value() * e + I.value() * integral + D.value() * de;
+				var gravity = constrain(outputBuffer[previousIndex], -10.0, 10.0);
+				
+				outputBuffer[currentIndex] = outputBuffer[previousIndex] + 0.8 * (outputBuffer[previousIndex] - outputBuffer[prevprevIndex]) + correcteur - gravity;
+				
+				error = e;
+				integral = constrain(integral + e, -100, 100);
+				frameCount++;
+				if (frameCount > 999)
+					frameCount = 0;
+			}
+			
+			function draw()
+			{
+				update();
+			
+			
+				background(128);
+				noFill(); stroke(0);
+				
+				fill(255);
+				line(0, halfHeight, windowSizeX, halfHeight);
+				text('INPUT : ', 13, 81);
+				text('P [' + P.value().toString() + ']', P.width + 20, 15);
+				text('I [' + I.value().toString() + ']', I.width + 20, 35);
+				text('D [' + D.value().toString() + ']', D.width + 20, 55);
+				text('0.0', windowSizeX - 1.7 * txtsize, halfHeight - 3);
+				text(halfHeight.toString(), windowSizeX - 1.7 * txtsize, txtsize);
+				text('-' + halfHeight.toString(), windowSizeX - 2.1* txtsize, windowSizeY - 3);
+				
+				// curves
+				noFill(); stroke(200, 0, 0);
+				var v_1 = inputBuffer[(currentIndex + 1) % inputBuffer.length];
+				for (let i = 2; i < inputBuffer.length; i++)
+				{
+					var index = (currentIndex + i) % inputBuffer.length;
+					var v_0 = inputBuffer[index];
+					
+					line(i, halfHeight + v_1, i, halfHeight + v_0);
+					v_1 = v_0;
+				}
+				stroke(250);
+				v_1 = outputBuffer[(currentIndex + 1) % inputBuffer.length];
+				for (let i = 2; i < outputBuffer.length; i++)
+				{
+					var index = (currentIndex + i) % outputBuffer.length;
+					var v_0 = outputBuffer[index];
+					
+					line(i, halfHeight + v_1, i, halfHeight + v_0);
+					v_1 = v_0;
+				}
+				
+				// end
+				currentIndex = (currentIndex + 1) % inputBuffer.length;
+			}
+			
+			new p5();
+		</script>
+	</head>
+	<body>
+	</body>
+</html>
