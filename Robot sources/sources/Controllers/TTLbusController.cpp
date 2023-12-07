@@ -1,7 +1,7 @@
 #include "TTLbusController.hpp"
 #include "bcm2835.h"
 
-#define COM_DIRECTION 21
+#define COM_DIRECTION 20
 
 
 ///  default
